@@ -1,0 +1,551 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
+
+class AuthController extends Controller
+{
+    public function showLoginForm()
+    {
+        return view('login');
+    }
+
+    public function showRegisterForm()
+    {
+        return view('register');
+    }
+
+    public function register(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users',
+                'password' => 'required|min:6|confirmed',
+            ]);
+
+            $user = User::create([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'password' => Hash::make($validatedData['password']),
+                'role' => 'user',
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Đăng ký thành công'], 201);
+            }
+
+            return redirect()->route('login')->with('success', 'Đăng ký thành công! Vui lòng đăng nhập.');
+        } catch (\Exception $e) {
+            Log::error('Lỗi đăng ký: ' . $e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Đăng ký thất bại: ' . $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->with('error', 'Đăng ký thất bại: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function login(Request $request)
+    {
+        try {
+            $credentials = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
+
+            // Ghi log thông tin đăng nhập
+            Log::info('Đang xử lý đăng nhập cho email: ' . $credentials['email']);
+
+            // Đăng xuất người dùng hiện tại nếu có
+            if (Auth::check()) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                // Xóa cookie JWT nếu có
+                if ($request->cookie('jwt_token')) {
+                    try {
+                        $token = $request->cookie('jwt_token');
+                        JWTAuth::setToken($token);
+                        $this->addTokenToBlacklist($token);
+                        JWTAuth::invalidate($token);
+                    } catch (\Exception $e) {
+                        Log::error('Lỗi khi vô hiệu hóa token cũ: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // Xác thực thông qua Laravel Auth - không sử dụng remember token vì lý do bảo mật
+            if (Auth::attempt($credentials, false)) { // Luôn đặt remember = false
+                $request->session()->regenerate();
+
+                // Tạo JWT token cho người dùng
+                $user = Auth::user();
+                Log::info('Đăng nhập thành công cho user ID: ' . $user->id);
+
+                try {
+                    $token = JWTAuth::fromUser($user);
+                    Log::info('JWT token đã được tạo: ' . substr($token, 0, 10) . '...');
+
+                    // Đặt thời gian sống cố định cho token (ngắn hạn) - không sử dụng remember token
+                    try {
+                        $payload = JWTAuth::setToken($token)->getPayload();
+                        $expiration = $payload['exp'];
+                        Log::info('JWT token hợp lệ, expires at: ' . date('Y-m-d H:i:s', $expiration));
+
+                        // Đặt thời gian sống cố định cho cookie (60 phút = 1 giờ)
+                        // Thời gian ngắn giúp tăng tính bảo mật
+                        $minutes = 60;
+
+                        Log::info('Đặt thời gian sống cố định cho token: ' . $minutes . ' phút');
+                    } catch (\Exception $e) {
+                        Log::error('JWT token không hợp lệ: ' . $e->getMessage());
+                        $minutes = 60; // Mặc định 1 giờ
+                    }
+
+                    // Nếu yêu cầu API
+                    if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
+                        return response()->json(['token' => $token, 'user' => $user]);
+                    }
+
+                    // Đăng nhập người dùng vào Laravel Auth
+                    Auth::login($user);
+
+                    // Tạo cookie chứa token và chuyển hướng dựa trên role
+                    $redirectTo = '/dashboard';
+
+                    // Chuyển hướng dựa trên role
+                    if ($user->role === 'admin') {
+                        $redirectTo = route('admin.dashboard');
+                        Log::info('Chuyển hướng admin đến: ' . $redirectTo);
+                    } elseif ($user->role === 'manager') {
+                        $redirectTo = route('manager.dashboard');
+                        Log::info('Chuyển hướng manager đến: ' . $redirectTo);
+                    } else {
+                        $redirectTo = route('dashboard');
+                        Log::info('Chuyển hướng user đến: ' . $redirectTo);
+                    }
+
+                    Log::info('User role: ' . $user->role . ', redirectTo: ' . $redirectTo);
+
+                    // Tạo cookie với các thuộc tính bảo mật
+                    $cookie = cookie(
+                        'jwt_token',      // Tên cookie
+                        $token,           // Giá trị cookie
+                        $minutes,         // Thời gian sống (phút)
+                        '/',              // Path
+                        null,             // Domain (null = domain hiện tại)
+                        true,             // Secure (chỉ gửi qua HTTPS)
+                        true,             // HttpOnly (không thể truy cập bằng JavaScript)
+                        false,            // Raw
+                        'Lax'             // SameSite (Lax cho phép gửi cookie khi chuyển hướng từ site khác)
+                    );
+
+                    return redirect()->intended($redirectTo)->cookie($cookie);
+                } catch (\Exception $jwtException) {
+                    Log::error('Lỗi tạo JWT token: ' . $jwtException->getMessage());
+                    throw $jwtException;
+                }
+            }
+
+            // Xác thực không thành công
+            Log::error('Đăng nhập thất bại: Thông tin không hợp lệ cho email ' . $credentials['email']);
+
+            if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
+                return response()->json(['error' => 'Thông tin đăng nhập không chính xác'], 401);
+            }
+
+            return back()->withErrors([
+                'email' => 'Thông tin đăng nhập không chính xác',
+            ])->withInput();
+
+        } catch (\Exception $e) {
+            Log::error('Lỗi đăng nhập: ' . $e->getMessage());
+
+            if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
+                return response()->json(['error' => 'Lỗi đăng nhập: ' . $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Lỗi đăng nhập: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Đăng nhập cho ứng dụng desktop
+     */
+    public function desktopLogin(Request $request)
+    {
+        try {
+            $credentials = $request->only('email', 'password');
+
+            Log::info('Desktop API login: Đang xử lý cho email: ' . $credentials['email']);
+
+            // Xác thực với JWT trực tiếp
+            if (!$token = auth('api')->attempt($credentials)) {
+                Log::error('Desktop API login: Xác thực thất bại cho email: ' . $credentials['email']);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Thông tin đăng nhập không chính xác'
+                ]);
+            }
+
+            $user = auth('api')->user();
+            Log::info('Desktop API login: Xác thực thành công cho user ID: ' . $user->id);
+            Log::info('Desktop API login: Token đã được tạo: ' . substr($token, 0, 10) . '...');
+
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Desktop API login: Lỗi: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Thêm token vào blacklist
+     */
+    protected function addTokenToBlacklist($token)
+    {
+        try {
+            // Lấy payload từ token
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $jti = $payload['jti']; // JWT ID
+            $exp = $payload['exp']; // Thời gian hết hạn
+
+            // Thêm vào bảng blacklist_tokens
+            \DB::table('blacklist_tokens')->insert([
+                'token_id' => $jti,
+                'expires_at' => date('Y-m-d H:i:s', $exp),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            Log::info('Token đã được thêm vào blacklist: ' . substr($token, 0, 10) . '...');
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Lỗi khi thêm token vào blacklist: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function logout(Request $request)
+    {
+        try {
+            // Xử lý đăng xuất thông qua Laravel Auth
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            // Nếu có token JWT, vô hiệu hóa nó và thêm vào blacklist
+            if ($request->cookie('jwt_token')) {
+                try {
+                    $token = $request->cookie('jwt_token');
+                    JWTAuth::setToken($token);
+                    $this->addTokenToBlacklist($token);
+                    JWTAuth::invalidate($token);
+                } catch (\Exception $e) {
+                    Log::error('Lỗi khi vô hiệu hóa token: ' . $e->getMessage());
+                }
+            }
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Đăng xuất thành công'
+                ])->cookie(cookie('jwt_token', '', -1, '/', null, true, true, false, 'Lax'));
+            }
+
+            // Tạo cookie hết hạn để xóa token
+            $cookie = cookie(
+                'jwt_token',      // Tên cookie
+                '',               // Giá trị rỗng
+                -1,               // Thời gian âm để xóa cookie
+                '/',              // Path
+                null,             // Domain (null = domain hiện tại)
+                true,             // Secure (chỉ gửi qua HTTPS)
+                true,             // HttpOnly (không thể truy cập bằng JavaScript)
+                false,            // Raw
+                'Lax'             // SameSite
+            );
+
+            // Chuyển hướng đến trang đăng nhập
+            return redirect('/login')
+                ->with('force_logout', true) // Thêm flag để buộc đăng nhập lại
+                ->cookie($cookie);
+        } catch (JWTException $e) {
+            Log::error('Lỗi đăng xuất: ' . $e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Không thể đăng xuất, vui lòng thử lại'], 500);
+            }
+
+            return redirect('/login');
+        }
+    }
+
+    public function refresh()
+    {
+        try {
+            // Lấy token hiện tại
+            $current_token = JWTAuth::getToken();
+
+            if (!$current_token) {
+                return response()->json(['error' => 'Token không tồn tại'], 401);
+            }
+
+            try {
+                // Kiểm tra token có trong blacklist không
+                $payload = JWTAuth::getPayload($current_token);
+                $jti = $payload['jti'];
+
+                // Kiểm tra trong blacklist (giả định có bảng blacklist_tokens)
+                $blacklisted = \DB::table('blacklist_tokens')->where('token_id', $jti)->exists();
+                if ($blacklisted) {
+                    return response()->json(['error' => 'Token đã bị vô hiệu hóa'], 401);
+                }
+
+                // Tạo token mới
+                $new_token = JWTAuth::refresh($current_token);
+
+                // Lưu token cũ vào blacklist
+                $this->addTokenToBlacklist($current_token);
+
+                // Lấy thông tin user từ token mới
+                JWTAuth::setToken($new_token);
+                $user = JWTAuth::toUser();
+
+                // Lấy thời gian hết hạn
+                $payload = JWTAuth::getPayload();
+                $expires_at = date('Y-m-d H:i:s', $payload['exp']);
+
+                return response()->json([
+                    'token' => $new_token,
+                    'user' => $user,
+                    'expires_at' => $expires_at
+                ]);
+            } catch (TokenExpiredException $e) {
+                // Token đã hết hạn, thử refresh bằng cách khác
+                try {
+                    // Sử dụng JWTAuth::manager() để refresh token đã hết hạn
+                    $new_token = JWTAuth::manager()->refresh(JWTAuth::getToken(), false, true);
+
+                    // Lưu token cũ vào blacklist
+                    $this->addTokenToBlacklist($current_token);
+
+                    // Lấy thông tin user từ token mới
+                    JWTAuth::setToken($new_token);
+                    $user = JWTAuth::toUser();
+
+                    // Lấy thời gian hết hạn
+                    $payload = JWTAuth::getPayload();
+                    $expires_at = date('Y-m-d H:i:s', $payload['exp']);
+
+                    return response()->json([
+                        'token' => $new_token,
+                        'user' => $user,
+                        'expires_at' => $expires_at
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Lỗi refresh token đã hết hạn: ' . $e->getMessage());
+                    return response()->json(['error' => 'Token đã hết hạn và không thể refresh'], 401);
+                }
+            }
+        } catch (JWTException $e) {
+            Log::error('Lỗi refresh token: ' . $e->getMessage());
+            return response()->json(['error' => 'Không thể refresh token: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function me(Request $request)
+    {
+        try {
+            // Nếu người dùng đã đăng nhập qua Laravel Auth
+            if (Auth::check()) {
+                $user = Auth::user();
+                Log::info('User đã xác thực qua Laravel Auth: ' . $user->id);
+                return response()->json(['valid' => true, 'user' => $user]);
+            }
+
+            // Lấy token từ request
+            $token = null;
+
+            // Kiểm tra token trong header Authorization
+            $authHeader = $request->header('Authorization');
+            if ($authHeader && strpos($authHeader, 'Bearer ') === 0) {
+                $token = str_replace('Bearer ', '', $authHeader);
+                JWTAuth::setToken($token);
+            }
+
+            // Nếu không có token trong header, kiểm tra trong session
+            if (!$token && Session::has('jwt_token')) {
+                $token = Session::get('jwt_token');
+                JWTAuth::setToken($token);
+            }
+
+            // Nếu không có token trong header hoặc session, kiểm tra trong cookie
+            if (!$token && $request->cookie('jwt_token')) {
+                $token = $request->cookie('jwt_token');
+                JWTAuth::setToken($token);
+            }
+
+            // Nếu không tìm thấy token ở đâu cả
+            if (!$token) {
+                Log::error('JWT Token không tồn tại trong request, session hoặc cookie');
+                return response()->json(['valid' => false, 'error' => 'Token không tồn tại'], 401);
+            }
+
+            // Không log token để bảo mật
+
+            // Lấy thông tin user hiện tại từ token
+            $user = JWTAuth::parseToken()->authenticate();
+            if (!$user) {
+                Log::error('JWT User không tìm thấy');
+                return response()->json(['valid' => false, 'error' => 'Không tìm thấy người dùng'], 404);
+            }
+
+            // Không tự động đăng nhập người dùng vào Laravel Auth
+            // Chỉ kiểm tra tính hợp lệ của token
+
+            Log::info('JWT User đã xác thực: ' . $user->id);
+
+            // Chỉ trả về thông tin cần thiết, không trả về toàn bộ thông tin user
+            return response()->json([
+                'valid' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    // Không trả về các thông tin nhạy cảm khác
+                ]
+            ]);
+        } catch (TokenExpiredException $e) {
+            Log::error('JWT Token đã hết hạn: ' . $e->getMessage());
+            return response()->json(['valid' => false, 'error' => 'Token đã hết hạn'], 401);
+        } catch (TokenInvalidException $e) {
+            Log::error('JWT Token không hợp lệ: ' . $e->getMessage());
+            return response()->json(['valid' => false, 'error' => 'Token không hợp lệ'], 401);
+        } catch (JWTException $e) {
+            Log::error('Lỗi JWT: ' . $e->getMessage());
+            return response()->json(['valid' => false, 'error' => 'Lỗi token: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Đổi mật khẩu cho người dùng đã đăng nhập
+     */
+    public function changePassword(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            // Validate dữ liệu đầu vào
+            $validatedData = $request->validate([
+                'current_password' => 'required',
+                'new_password' => 'required|min:6|confirmed',
+            ]);
+
+            // Kiểm tra mật khẩu hiện tại
+            if (!Hash::check($validatedData['current_password'], $user->password)) {
+                return back()->with('error', 'Mật khẩu hiện tại không chính xác');
+            }
+
+            // Cập nhật mật khẩu mới
+            $user->password = Hash::make($validatedData['new_password']);
+            $user->save();
+
+            // Đăng xuất khỏi các thiết bị khác (vô hiệu hóa tất cả token)
+            // Lấy tất cả token của user và thêm vào blacklist
+            try {
+                // Thêm logic vô hiệu hóa token nếu cần
+                // Ví dụ: Có thể thêm tất cả token hiện tại vào blacklist
+            } catch (\Exception $e) {
+                Log::error('Lỗi khi vô hiệu hóa token sau khi đổi mật khẩu: ' . $e->getMessage());
+            }
+
+            // Đăng nhập lại với mật khẩu mới
+            Auth::login($user);
+
+            // Tạo token JWT mới
+            $token = JWTAuth::fromUser($user);
+
+            // Tạo cookie mới với token mới
+            $minutes = 60; // 1 giờ
+            $cookie = cookie(
+                'jwt_token',
+                $token,
+                $minutes,
+                '/',
+                null,
+                true,
+                true,
+                false,
+                'Lax'
+            );
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Đổi mật khẩu thành công'])->cookie($cookie);
+            }
+
+            return redirect()->back()->with('success', 'Đổi mật khẩu thành công')->cookie($cookie);
+        } catch (\Exception $e) {
+            Log::error('Lỗi đổi mật khẩu: ' . $e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Đổi mật khẩu thất bại: ' . $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->with('error', 'Đổi mật khẩu thất bại: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cập nhật thông tin cá nhân của người dùng
+     */
+    public function updateProfile(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            // Validate dữ liệu đầu vào
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'address' => 'nullable|string|max:255',
+            ]);
+
+            // Cập nhật thông tin người dùng
+            $user->name = $validatedData['name'];
+            $user->phone = $validatedData['phone'];
+            $user->address = $validatedData['address'];
+            $user->save();
+
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Cập nhật thông tin thành công', 'user' => $user]);
+            }
+
+            return redirect()->back()->with('success', 'Cập nhật thông tin thành công');
+        } catch (\Exception $e) {
+            Log::error('Lỗi cập nhật thông tin cá nhân: ' . $e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Cập nhật thông tin thất bại: ' . $e->getMessage()], 500);
+            }
+
+            return redirect()->back()->with('error', 'Cập nhật thông tin thất bại: ' . $e->getMessage())->withInput();
+        }
+    }
+}

@@ -1,0 +1,23 @@
+# Ignore node_modules
+node_modules/
+work_management_desktopapp/node_modules/
+
+# Laravel specific
+/vendor/
+.env
+.env.backup
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+
+# IDE specific files
+.idea
+.vscode
+*.sublime-workspace
+*.sublime-project
+
+# OS specific files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách công việc - Ứng dụng Quản lý Công việc</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background-color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin: 0;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-email {
+      margin-right: 15px;
+      color: #555;
+    }
+
+    .logout-btn {
+      padding: 8px 15px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .logout-btn:hover {
+      background-color: #c0392b;
+    }
+
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .add-task-btn {
+      padding: 10px 20px;
+      background-color: #4a6cf7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 20px;
+      transition: background-color 0.3s;
+    }
+
+    .add-task-btn:hover {
+      background-color: #3a5ce5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f8f9fa;
+      color: #333;
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .status-badge {
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .status-in-progress {
+      background-color: #cce5ff;
+      color: #004085;
+    }
+
+    .status-completed {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .priority-high {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .priority-medium {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .priority-low {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 50%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: black;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      width: 100%;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      height: 100px;
+      resize: vertical;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #4a6cf7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    .submit-btn:hover {
+      background-color: #3a5ce5;
+    }
+
+    .error-message {
+      color: #e74c3c;
+      font-size: 14px;
+      margin-top: 15px;
+      text-align: center;
+      display: none;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .no-tasks {
+      text-align: center;
+      padding: 30px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Quản lý Công việc</h1>
+      <div class="user-info">
+        <span class="user-email" id="userEmail"></span>
+        <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
+      </div>
+    </header>
+
+    <button class="add-task-btn" id="openModalBtn">Thêm công việc mới</button>
+
+    <div class="card">
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Đang tải dữ liệu...</p>
+      </div>
+
+      <div id="errorMessage" class="error-message"></div>
+
+      <div id="tasksContainer">
+        <table id="tasksTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tiêu đề</th>
+              <th>Ngày bắt đầu</th>
+              <th>Ngày kết thúc</th>
+              <th>Trạng thái</th>
+              <th>Mức độ ưu tiên</th>
+            </tr>
+          </thead>
+          <tbody id="tasksList">
+            <!-- Danh sách công việc sẽ được thêm vào đây -->
+          </tbody>
+        </table>
+        <div id="noTasks" class="no-tasks" style="display: none;">
+          <p>Không có công việc nào. Hãy thêm công việc mới!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal thêm công việc -->
+  <div id="addTaskModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <h2>Thêm công việc mới</h2>
+      <form id="addTaskForm">
+        <div class="form-group">
+          <label for="title">Tiêu đề</label>
+          <input type="text" id="title" name="title" required>
+        </div>
+        <div class="form-group">
+          <label for="description">Mô tả</label>
+          <textarea id="description" name="description"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="startDate">Ngày bắt đầu</label>
+          <input type="date" id="startDate" name="start_date" required>
+        </div>
+        <div class="form-group">
+          <label for="dueDate">Ngày kết thúc</label>
+          <input type="date" id="dueDate" name="due_date" required>
+        </div>
+        <div class="form-group">
+          <label for="priority">Mức độ ưu tiên</label>
+          <select id="priority" name="priority" required>
+            <option value="low">Thấp</option>
+            <option value="medium" selected>Trung bình</option>
+            <option value="high">Cao</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="status">Trạng thái</label>
+          <select id="status" name="status" required>
+            <option value="pending" selected>Chờ xử lý</option>
+            <option value="in_progress">Đang thực hiện</option>
+            <option value="completed">Hoàn thành</option>
+          </select>
+        </div>
+        <button type="submit" class="submit-btn">Thêm công việc</button>
+      </form>
+      <div id="modalError" class="error-message"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const userEmail = document.getElementById('userEmail');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const openModalBtn = document.getElementById('openModalBtn');
+      const addTaskModal = document.getElementById('addTaskModal');
+      const closeModal = document.getElementById('closeModal');
+      const addTaskForm = document.getElementById('addTaskForm');
+      const modalError = document.getElementById('modalError');
+      const loading = document.getElementById('loading');
+      const errorMessage = document.getElementById('errorMessage');
+      const tasksList = document.getElementById('tasksList');
+      const noTasks = document.getElementById('noTasks');
+      const tasksTable = document.getElementById('tasksTable');
+
+      // Kiểm tra token và lấy thông tin người dùng
+      checkAuth();
+
+      // Lấy danh sách công việc
+      loadTasks();
+
+      // Hàm lấy danh sách công việc
+      async function loadTasks() {
+        loading.style.display = 'block';
+        errorMessage.style.display = 'none';
+
+        try {
+          const result = await window.api.getTasks();
+
+          if (result.success) {
+            renderTasks(result.tasks);
+          } else {
+            if (result.tokenExpired) {
+              // Nếu token hết hạn, đăng xuất và chuyển về trang đăng nhập
+              await window.api.logout();
+              window.location.href = 'login.html';
+              return;
+            }
+
+            errorMessage.textContent = result.error || 'Không thể tải danh sách công việc';
+            errorMessage.style.display = 'block';
+          }
+        } catch (error) {
+          errorMessage.textContent = error.message || 'Đã xảy ra lỗi khi tải dữ liệu';
+          errorMessage.style.display = 'block';
+        } finally {
+          loading.style.display = 'none';
+        }
+      }
+
+      // Hàm kiểm tra xác thực
+      async function checkAuth() {
+        try {
+          const token = await window.api.getToken();
+          if (!token) {
+            // Nếu không có token, chuyển về trang đăng nhập
+            window.location.href = 'login.html';
+            return;
+          }
+
+          const tokenInfo = await window.api.checkToken();
+          if (!tokenInfo.valid) {
+            // Nếu token không hợp lệ, đăng xuất và chuyển về trang đăng nhập
+            await window.api.logout();
+            window.location.href = 'login.html';
+            return;
+          }
+
+          // Hiển thị email người dùng
+          const user = tokenInfo.payload.sub;
+          userEmail.textContent = user;
+        } catch (error) {
+          console.error('Error checking auth:', error);
+          window.location.href = 'login.html';
+        }
+      }
+
+      function renderTasks(tasks) {
+        tasksList.innerHTML = '';
+
+        if (tasks.length === 0) {
+          noTasks.style.display = 'block';
+          tasksTable.style.display = 'none';
+          return;
+        }
+
+        noTasks.style.display = 'none';
+        tasksTable.style.display = 'table';
+
+        tasks.forEach(task => {
+          const row = document.createElement('tr');
+
+          // Format dates
+          const startDate = task.start_date ? new Date(task.start_date).toLocaleDateString('vi-VN') : 'N/A';
+          const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'N/A';
+
+          // Status text
+          let statusText = 'Chờ xử lý';
+          let statusClass = 'status-pending';
+
+          if (task.status === 'in_progress') {
+            statusText = 'Đang thực hiện';
+            statusClass = 'status-in-progress';
+          } else if (task.status === 'completed') {
+            statusText = 'Hoàn thành';
+            statusClass = 'status-completed';
+          }
+
+          // Priority text
+          let priorityText = 'Trung bình';
+          let priorityClass = 'priority-medium';
+
+          if (task.priority === 'high') {
+            priorityText = 'Cao';
+            priorityClass = 'priority-high';
+          } else if (task.priority === 'low') {
+            priorityText = 'Thấp';
+            priorityClass = 'priority-low';
+          }
+
+          row.innerHTML = `
+            <td>${task.id}</td>
+            <td>${task.title}</td>
+            <td>${startDate}</td>
+            <td>${dueDate}</td>
+            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            <td><span class="status-badge ${priorityClass}">${priorityText}</span></td>
+          `;
+
+          tasksList.appendChild(row);
+        });
+      }
+
+      // Xử lý đăng xuất
+      logoutBtn.addEventListener('click', async () => {
+        try {
+              await window.api.logout();
+          window.location.href = 'login.html';
+        } catch (error) {
+          console.error('Error logging out:', error);
+        }
+      });
+
+      // Xử lý mở modal
+      openModalBtn.addEventListener('click', () => {
+        addTaskModal.style.display = 'block';
+        modalError.style.display = 'none';
+        addTaskForm.reset();
+
+        // Set default date values
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').value = today;
+
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        document.getElementById('dueDate').value = nextWeek.toISOString().split('T')[0];
+      });
+
+      // Xử lý đóng modal
+      closeModal.addEventListener('click', () => {
+        addTaskModal.style.display = 'none';
+      });
+
+      // Đóng modal khi click bên ngoài
+      window.addEventListener('click', (event) => {
+        if (event.target === addTaskModal) {
+          addTaskModal.style.display = 'none';
+        }
+      });
+
+      // Xử lý thêm công việc
+      addTaskForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        modalError.style.display = 'none';
+
+        // Lấy dữ liệu từ form
+        const formData = new FormData(addTaskForm);
+        const taskData = {};
+
+        for (const [key, value] of formData.entries()) {
+          taskData[key] = value;
+        }
+
+        try {
+          const result = await window.api.addTask(taskData);
+
+          if (result.success) {
+            // Thêm công việc thành công, đóng modal và tải lại danh sách
+            addTaskModal.style.display = 'none';
+            loadTasks();
+          } else {
+            if (result.tokenExpired) {
+              // Nếu token hết hạn, đăng xuất và chuyển về trang đăng nhập
+              await window.api.logout();
+              window.location.href = 'login.html';
+              return;
+            }
+
+            modalError.textContent = result.error || 'Không thể thêm công việc';
+            modalError.style.display = 'block';
+          }
+        } catch (error) {
+          modalError.textContent = error.message || 'Đã xảy ra lỗi khi thêm công việc';
+          modalError.style.display = 'block';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
