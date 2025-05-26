@@ -22,10 +22,10 @@ class WebAuthenticate
      */
     public function handle(Request $request, Closure $next)
     {
-        // Kiểm tra xem người dùng đã đăng nhập thông qua Laravel Auth chưa
-        if (Auth::check()) {
-            return $next($request);
-        }
+        // KHÔNG kiểm tra Laravel Auth để buộc phải dùng JWT
+        // if (Auth::check()) {
+        //     return $next($request);
+        // }
 
         // Kiểm tra xem có JWT token trong session không
         if (Session::has('jwt_token')) {
@@ -35,7 +35,7 @@ class WebAuthenticate
                 $user = JWTAuth::authenticate();
 
                 if ($user) {
-                    // Đăng nhập người dùng vào Laravel Auth
+                    // Đăng nhập tạm thời cho request này
                     Auth::login($user);
                     return $next($request);
                 }
@@ -59,7 +59,7 @@ class WebAuthenticate
                 $user = JWTAuth::authenticate();
 
                 if ($user) {
-                    // Đăng nhập người dùng vào Laravel Auth
+                    // Đăng nhập tạm thời cho request này
                     Auth::login($user);
                     // Lưu token vào session
                     Session::put('jwt_token', $token);

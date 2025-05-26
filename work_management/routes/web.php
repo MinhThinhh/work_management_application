@@ -17,7 +17,7 @@ Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('regi
 Route::post('/register', [AuthController::class, 'register']);
 
 // Protected Routes (require authentication)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\HandleJwtToken::class])->group(function () {
     // Dashboard
     Route::get('/dashboard', [TaskController::class, 'dashboard'])->name('dashboard');
 
@@ -35,7 +35,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Protected API Routes (require authentication)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\HandleJwtToken::class])->group(function () {
     // Calendar API Routes
     Route::get('/api/events', [TaskController::class, 'getEvents'])->name('events.all');
     Route::get('/api/events/day', [TaskController::class, 'getDayEvents'])->name('events.day');
@@ -53,7 +53,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Manager Routes - Chỉ quản lý công việc
-Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\HandleJwtToken::class])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard', [ManagerController::class, 'dashboard'])->name('dashboard');
     Route::get('/users', [ManagerController::class, 'users'])->name('users'); // Chuyển hướng về dashboard với thông báo
     Route::get('/tasks', [ManagerController::class, 'allTasks'])->name('all-tasks');
@@ -66,7 +66,7 @@ Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function
 });
 
 // Admin Routes - Chỉ quản lý người dùng
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\HandleJwtToken::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
     // User Management
@@ -78,7 +78,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])->name('delete-user');
 
     // Admin không quản lý công việc - chuyển hướng về dashboard
-    Route::get('/tasks', function() {
+    Route::get('/tasks', function () {
         return redirect()->route('admin.dashboard');
     })->name('all-tasks');
 
@@ -86,7 +86,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
 
     // Access to Manager Dashboard
-    Route::get('/manager-dashboard', function() {
+    Route::get('/manager-dashboard', function () {
         return redirect()->route('manager.dashboard');
     })->name('manager-dashboard');
 });
@@ -96,7 +96,7 @@ Route::post('/refresh', [AuthController::class, 'refresh'])->name('refresh');
 Route::get('/api/auth/session', [AuthController::class, 'me'])->name('session.verify');
 
 // Health check endpoint for desktop app
-Route::get('/health-check', function() {
+Route::get('/health-check', function () {
     return response()->json([
         'status' => 'ok',
         'message' => 'API is running',

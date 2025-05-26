@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class AuthController extends Controller
 {
@@ -84,12 +87,17 @@ class AuthController extends Controller
                 }
             }
 
-            // Xác thực thông qua Laravel Auth - không sử dụng remember token vì lý do bảo mật
+            // Chỉ xác thực để lấy user, KHÔNG đăng nhập vào Laravel session
             if (Auth::attempt($credentials, false)) { // Luôn đặt remember = false
-                $request->session()->regenerate();
+                // KHÔNG regenerate session để tránh tự động đăng nhập
+                // $request->session()->regenerate();
 
                 // Tạo JWT token cho người dùng
                 $user = Auth::user();
+
+                // ĐĂNG XUẤT ngay lập tức để không lưu session
+                Auth::logout();
+
                 Log::info('Đăng nhập thành công cho user ID: ' . $user->id);
 
                 try {
@@ -102,14 +110,14 @@ class AuthController extends Controller
                         $expiration = $payload['exp'];
                         Log::info('JWT token hợp lệ, expires at: ' . date('Y-m-d H:i:s', $expiration));
 
-                        // Đặt thời gian sống cố định cho cookie (60 phút = 1 giờ)
+                        // Đặt thời gian sống cố định cho cookie (1 phút để test)
                         // Thời gian ngắn giúp tăng tính bảo mật
-                        $minutes = 60;
+                        $minutes = 1;
 
                         Log::info('Đặt thời gian sống cố định cho token: ' . $minutes . ' phút');
                     } catch (\Exception $e) {
                         Log::error('JWT token không hợp lệ: ' . $e->getMessage());
-                        $minutes = 60; // Mặc định 1 giờ
+                        $minutes = 1; // Mặc định 1 phút để test
                     }
 
                     // Nếu yêu cầu API
@@ -167,7 +175,6 @@ class AuthController extends Controller
             return back()->withErrors([
                 'email' => 'Thông tin đăng nhập không chính xác',
             ])->withInput();
-
         } catch (\Exception $e) {
             Log::error('Lỗi đăng nhập: ' . $e->getMessage());
 
@@ -373,12 +380,12 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         try {
-            // Nếu người dùng đã đăng nhập qua Laravel Auth
-            if (Auth::check()) {
-                $user = Auth::user();
-                Log::info('User đã xác thực qua Laravel Auth: ' . $user->id);
-                return response()->json(['valid' => true, 'user' => $user]);
-            }
+            // KHÔNG kiểm tra Laravel Auth để buộc phải dùng JWT
+            // if (Auth::check()) {
+            //     $user = Auth::user();
+            //     Log::info('User đã xác thực qua Laravel Auth: ' . $user->id);
+            //     return response()->json(['valid' => true, 'user' => $user]);
+            // }
 
             // Lấy token từ request
             $token = null;
@@ -391,8 +398,8 @@ class AuthController extends Controller
             }
 
             // Nếu không có token trong header, kiểm tra trong session
-            if (!$token && Session::has('jwt_token')) {
-                $token = Session::get('jwt_token');
+            if (!$token && session()->has('jwt_token')) {
+                $token = session()->get('jwt_token');
                 JWTAuth::setToken($token);
             }
 

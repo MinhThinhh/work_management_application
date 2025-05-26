@@ -101,7 +101,7 @@ return [
     |
     */
 
-    'ttl' => env('JWT_TTL', 60), // Đặt thời gian sống cố định là 60 phút (1 giờ) - không sử dụng remember token
+    'ttl' => env('JWT_TTL', 1), // Đặt thời gian sống cố định là 1 phút để test - không sử dụng remember token
 
     /*
     |--------------------------------------------------------------------------
