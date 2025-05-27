@@ -35,6 +35,17 @@ class HandleJwtToken
         if ($token) {
             try {
                 JWTAuth::setToken($token);
+
+                // Kiểm tra token có trong blacklist không
+                $payload = JWTAuth::getPayload($token);
+                $jti = $payload['jti'];
+                $blacklisted = \DB::table('blacklist_tokens')->where('token_id', $jti)->exists();
+
+                if ($blacklisted) {
+                    \Log::warning('Token in cookie is blacklisted: ' . substr($token, 0, 10) . '...');
+                    throw new TokenInvalidException('Token is blacklisted');
+                }
+
                 $user = JWTAuth::authenticate();
 
                 // Không tự động đăng nhập, chỉ xác thực token

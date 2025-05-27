@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Quản lý công việc - Manager')</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
@@ -406,6 +407,111 @@
         .header-actions {
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+
+        /* Profile Button & Dropdown Styles */
+        .profile-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            transition: transform 0.2s;
+        }
+
+        .profile-button:hover {
+            transform: scale(1.05);
+        }
+
+        .profile-icon {
+            width: 40px;
+            height: 40px;
+            background: #f0f0f0;
+            color: #333;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-width: 200px;
+            border: 1px solid #f0f0f0;
+        }
+
+        .profile-dropdown-menu {
+            background-color: white;
+            border-radius: 12px;
+            padding: 8px 0;
+        }
+
+        .profile-dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+
+        .profile-dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .profile-dropdown-item i {
+            color: #6b7280;
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+
+        .profile-dropdown-item a,
+        .profile-dropdown-item button {
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+
+        .profile-dropdown-divider {
+            height: 1px;
+            background-color: #f0f0f0;
+            margin: 8px 0;
+        }
+
+        .password-change-container,
+        .edit-profile-container {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 1000;
+            margin-top: 0;
+            padding-top: 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .relative {
+            position: relative;
         }
 
         @media (max-width: 768px) {
@@ -431,10 +537,6 @@
             <span class="logo">Manager Panel</span>
         </div>
         <nav class="mt-6">
-            <a href="{{ route('manager.dashboard') }}" class="sidebar-link {{ request()->routeIs('manager.dashboard') ? 'active' : '' }}">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
             <a href="{{ route('manager.all-tasks') }}" class="sidebar-link {{ request()->routeIs('manager.all-tasks') ? 'active' : '' }}">
                 <i class="fas fa-tasks"></i>
                 <span>Quản lý công việc</span>
@@ -443,21 +545,48 @@
                 <i class="fas fa-chart-bar"></i>
                 <span>Báo cáo & Thống kê</span>
             </a>
-            <div class="mt-auto p-4">
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="sidebar-link w-full text-left">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Đăng xuất</span>
-                    </button>
-                </form>
-            </div>
         </nav>
     </div>
 
     <div class="content">
         <div class="header">
             <h1 class="header-title">@yield('header', 'Dashboard')</h1>
+            <div class="header-actions">
+                <div class="relative">
+                    <button id="profile-button" class="profile-button">
+                        <div class="profile-icon">
+                            {{ substr(Auth::user()->name ?? Auth::user()->email, 0, 2) }}
+                        </div>
+                    </button>
+                    <div id="profile-dropdown" class="profile-dropdown hidden">
+                        <div class="profile-dropdown-menu">
+                            <div class="profile-dropdown-item">
+                                <i class="fas fa-user"></i>
+                                <a href="#" id="profile-link">Thông tin cá nhân</a>
+                            </div>
+
+                            <div class="profile-dropdown-item">
+                                <i class="fas fa-key"></i>
+                                <a href="#" id="change-password-link">Đổi mật khẩu</a>
+                            </div>
+
+                            <div class="profile-dropdown-divider"></div>
+
+                            <div class="profile-dropdown-item">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <a href="{{ route('logout') }}" id="logout-button-dropdown">Đăng xuất</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="password-change-container" class="password-change-container hidden">
+                        @include('profile.password-form')
+                    </div>
+
+                    <div id="edit-profile-container" class="edit-profile-container hidden">
+                        @include('profile.edit-profile')
+                    </div>
+                </div>
+            </div>
         </div>
 
         @if(session('success'))
@@ -478,6 +607,82 @@
     </div>
 
     <script src="{{ asset('js/app.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <script>
+        // Configure Axios to include CSRF token with every request
+        window.axios = axios;
+        window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    </script>
+
+    <script>
+        // Xử lý hiển thị/ẩn profile dropdown
+        document.addEventListener('DOMContentLoaded', function() {
+            const profileButton = document.getElementById('profile-button');
+            const profileDropdown = document.getElementById('profile-dropdown');
+
+            // Hiển thị/ẩn dropdown khi nhấn vào profile button
+            if (profileButton && profileDropdown) {
+                profileButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    profileDropdown.classList.toggle('hidden');
+                });
+
+                // Ẩn dropdown khi nhấn ra ngoài
+                document.addEventListener('click', function(e) {
+                    if (!profileDropdown.contains(e.target) && e.target !== profileButton) {
+                        profileDropdown.classList.add('hidden');
+                    }
+                });
+            }
+
+            // Xử lý thông tin cá nhân
+            const profileLink = document.getElementById('profile-link');
+            if (profileLink) {
+                profileLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // Hiển thị form chỉnh sửa thông tin cá nhân trực tiếp
+                    const editProfileContainer = document.getElementById('edit-profile-container');
+                    if (editProfileContainer) {
+                        // Ẩn dropdown
+                        if (profileDropdown) {
+                            profileDropdown.classList.add('hidden');
+                        }
+
+                        // Hiển thị form chỉnh sửa thông tin cá nhân
+                        editProfileContainer.classList.remove('hidden');
+                    } else {
+                        alert('Chức năng thông tin cá nhân đang được phát triển. Vui lòng quay lại sau!');
+                    }
+                });
+            }
+
+            // Xử lý đổi mật khẩu
+            const changePasswordLink = document.getElementById('change-password-link');
+            if (changePasswordLink) {
+                changePasswordLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // Hiển thị form đổi mật khẩu
+                    const passwordChangeContainer = document.getElementById('password-change-container');
+                    if (passwordChangeContainer) {
+                        // Ẩn dropdown
+                        if (profileDropdown) {
+                            profileDropdown.classList.add('hidden');
+                        }
+
+                        // Hiển thị form đổi mật khẩu
+                        passwordChangeContainer.classList.remove('hidden');
+                    } else {
+                        alert('Chức năng đổi mật khẩu đang được phát triển. Vui lòng quay lại sau!');
+                    }
+                });
+            }
+        });
+    </script>
+
     @yield('scripts')
 </body>
 </html>

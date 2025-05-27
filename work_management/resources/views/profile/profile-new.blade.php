@@ -18,7 +18,7 @@
             </p>
         </div>
     </div>
-    
+
     <div class="profile-card__body">
         <div class="profile-columns">
             <!-- Cột 1: Thông tin cá nhân -->
@@ -53,7 +53,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Cột 2: Đổi mật khẩu -->
             <div class="profile-column">
                 <h3 class="profile-column__title">Đổi mật khẩu</h3>
@@ -78,18 +78,15 @@
                     </div>
                 </form>
             </div>
-            
+
             <!-- Cột 3: Đăng xuất và các tùy chọn khác -->
             <div class="profile-column">
                 <h3 class="profile-column__title">Tùy chọn tài khoản</h3>
                 <div class="profile-options">
-                    <form action="/logout" method="POST" class="logout-form">
-                        @csrf
-                        <button type="submit" class="btn-sm btn-danger" id="logout-button-profile">
-                            <i class="fas fa-sign-out-alt mr-1"></i> Đăng xuất
-                        </button>
-                    </form>
-                    
+                    <a href="/logout" class="btn-sm btn-danger" id="logout-button-profile">
+                        <i class="fas fa-sign-out-alt mr-1"></i> Đăng xuất
+                    </a>
+
                     <div class="profile-detail__item mt-3">
                         <div class="profile-detail__label">
                             <i class="fas fa-clock"></i>
@@ -97,7 +94,7 @@
                         </div>
                         <div class="profile-detail__value">{{ Auth::user()->last_login_at ?? 'Không có dữ liệu' }}</div>
                     </div>
-                    
+
                     <div class="profile-detail__item">
                         <div class="profile-detail__label">
                             <i class="fas fa-user-clock"></i>
@@ -120,7 +117,7 @@
         width: 800px;
         max-width: 90vw;
     }
-    
+
     .profile-card__header {
         display: flex;
         align-items: center;
@@ -128,11 +125,11 @@
         padding-bottom: 15px;
         border-bottom: 1px solid #e5e7eb;
     }
-    
+
     .profile-avatar {
         margin-right: 15px;
     }
-    
+
     .profile-avatar__circle {
         width: 60px;
         height: 60px;
@@ -146,20 +143,20 @@
         font-weight: bold;
         text-transform: uppercase;
     }
-    
+
     .profile-info__name {
         font-size: 20px;
         font-weight: 600;
         margin: 0 0 5px 0;
         color: #1f2937;
     }
-    
+
     .profile-columns {
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
     }
-    
+
     .profile-column {
         flex: 1;
         min-width: 220px;
@@ -167,7 +164,7 @@
         background-color: #f9fafb;
         border-radius: 8px;
     }
-    
+
     .profile-column__title {
         font-size: 16px;
         font-weight: 600;
@@ -176,16 +173,16 @@
         padding-bottom: 8px;
         border-bottom: 2px solid #e5e7eb;
     }
-    
+
     .profile-detail__item {
         padding: 8px 0;
         border-bottom: 1px solid #e5e7eb;
     }
-    
+
     .profile-detail__item:last-child {
         border-bottom: none;
     }
-    
+
     .profile-detail__label {
         display: flex;
         align-items: center;
@@ -193,36 +190,36 @@
         font-size: 14px;
         margin-bottom: 4px;
     }
-    
+
     .profile-detail__label i {
         margin-right: 8px;
         width: 16px;
     }
-    
+
     .profile-detail__value {
         color: #1f2937;
         font-weight: 500;
         font-size: 14px;
         word-break: break-word;
     }
-    
+
     .profile-action {
         margin-top: 15px;
         display: flex;
         justify-content: center;
     }
-    
+
     .form-group {
         margin-bottom: 12px;
     }
-    
+
     .form-group label {
         display: block;
         margin-bottom: 5px;
         font-size: 14px;
         color: #4b5563;
     }
-    
+
     .form-control {
         width: 100%;
         padding: 8px;
@@ -230,7 +227,7 @@
         border-radius: 4px;
         font-size: 14px;
     }
-    
+
     .btn-sm {
         padding: 6px 12px;
         font-size: 14px;
@@ -242,66 +239,66 @@
         border: none;
         text-decoration: none;
     }
-    
+
     .btn-primary {
         background-color: #4f46e5;
         color: white;
     }
-    
+
     .btn-primary:hover {
         background-color: #4338ca;
     }
-    
+
     .btn-danger {
         background-color: #ef4444;
         color: white;
     }
-    
+
     .btn-danger:hover {
         background-color: #dc2626;
     }
-    
+
     .badge {
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 12px;
         font-weight: 500;
     }
-    
+
     .badge-primary {
         background-color: #4f46e5;
         color: white;
     }
-    
+
     .badge-info {
         background-color: #3b82f6;
         color: white;
     }
-    
+
     .badge-success {
         background-color: #10b981;
         color: white;
     }
-    
+
     .mr-1 {
         margin-right: 4px;
     }
-    
+
     .mt-3 {
         margin-top: 12px;
     }
-    
+
     .logout-form {
         display: flex;
         justify-content: center;
     }
-    
+
     /* Responsive */
     @media (max-width: 768px) {
         .profile-columns {
             flex-direction: column;
         }
-        
+
         .profile-column {
             width: 100%;
         }
@@ -318,7 +315,7 @@
                 alert('Chức năng đang được phát triển. Vui lòng quay lại sau!');
             });
         }
-        
+
         // Xử lý đăng xuất
         const logoutButton = document.getElementById('logout-button-profile');
         if (logoutButton) {

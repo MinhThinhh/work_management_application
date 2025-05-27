@@ -12,32 +12,6 @@ use Illuminate\Support\Facades\Log;
 class AdminController extends Controller
 {
     /**
-     * Hiển thị dashboard cho admin
-     */
-    public function dashboard()
-    {
-        try {
-            // Kiểm tra quyền truy cập
-            if (Auth::user()->role !== 'admin') {
-                return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
-            }
-
-            $totalUsers = User::count();
-            $totalTasks = Task::count();
-            $usersByRole = [
-                'admin' => User::where('role', 'admin')->count(),
-                'manager' => User::where('role', 'manager')->count(),
-                'user' => User::where('role', 'user')->count(),
-            ];
-
-            return view('admin.dashboard', compact('totalUsers', 'totalTasks', 'usersByRole'));
-        } catch (\Exception $e) {
-            Log::error('Error in AdminController@dashboard: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Hiển thị danh sách tất cả người dùng
      */
     public function users()
@@ -83,12 +57,30 @@ class AdminController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
             $validatedData = $request->validate([
-                'email' => 'required|email|unique:users',
-                'password' => 'required|min:6|confirmed',
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[a-zA-ZÀ-ỹ\s]+$/u'
+                ],
+                'email' => 'required|email|unique:users,email',
+                'password' => [
+                    'required',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/'
+                ],
                 'role' => 'required|in:user,manager,admin',
+            ], [
+                'name.regex' => 'Họ và tên chỉ được chứa chữ cái và khoảng trắng, không được chứa số.',
+                'email.unique' => 'Email này đã được sử dụng. Vui lòng chọn email khác.',
+                'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+                'password.regex' => 'Mật khẩu phải chứa ít nhất 1 chữ thường, 1 chữ hoa và 1 số.',
+                'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
             ]);
 
             $user = User::create([
+                'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
                 'password' => Hash::make($validatedData['password']),
                 'role' => $validatedData['role'],
@@ -132,13 +124,13 @@ class AdminController extends Controller
             $user = User::findOrFail($id);
 
             $validatedData = $request->validate([
-                'email' => 'required|email|unique:users,email,' . $id,
+                'name' => 'required|string|max:255',
                 'role' => 'required|in:user,manager,admin',
                 'password' => 'nullable|min:6|confirmed',
             ]);
 
             $updateData = [
-                'email' => $validatedData['email'],
+                'name' => $validatedData['name'],
                 'role' => $validatedData['role'],
             ];
 
@@ -148,7 +140,7 @@ class AdminController extends Controller
 
             $user->update($updateData);
 
-            return redirect()->route('admin.users')->with('success', 'Người dùng đã được cập nhật thành công.');
+            return redirect()->route('admin.users')->with('success', 'Người dùng đã được cập nhật thành công. (Email không thể thay đổi vì lý do bảo mật)');
         } catch (\Exception $e) {
             Log::error('Error in AdminController@updateUser: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage())->withInput();
@@ -201,46 +193,6 @@ class AdminController extends Controller
             return view('admin.all-tasks', compact('tasks'));
         } catch (\Exception $e) {
             Log::error('Error in AdminController@allTasks: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Hiển thị báo cáo và thống kê
-     */
-    public function reports()
-    {
-        try {
-            // Kiểm tra quyền truy cập
-            if (Auth::user()->role !== 'admin') {
-                return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
-            }
-            $totalTasks = Task::count();
-            $pendingTasks = Task::where('status', 'pending')->count();
-            $inProgressTasks = Task::where('status', 'in_progress')->count();
-            $completedTasks = Task::where('status', 'completed')->count();
-
-            $userStats = User::withCount(['tasks as total_tasks',
-                        'tasks as pending_tasks' => function ($query) {
-                            $query->where('status', 'pending');
-                        },
-                        'tasks as in_progress_tasks' => function ($query) {
-                            $query->where('status', 'in_progress');
-                        },
-                        'tasks as completed_tasks' => function ($query) {
-                            $query->where('status', 'completed');
-                        }])
-                ->get();
-
-            return view('admin.reports', compact(
-                'totalTasks',
-                'pendingTasks',
-                'inProgressTasks',
-                'completedTasks',
-                'userStats'
-            ));
-        } catch (\Exception $e) {
-            Log::error('Error in AdminController@reports: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
         }
     }

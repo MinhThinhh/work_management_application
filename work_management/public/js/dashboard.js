@@ -12,19 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Kiểm tra xác thực
 function checkAuthentication() {
-    const token = localStorage.getItem('jwt_token');
+    // JWT authentication is now handled by server-side middleware
+    // No need to check localStorage token
+    console.log('JWT authentication handled by server middleware');
 
-    if (!token) {
-        console.log('No JWT token found in localStorage');
-        // Không cần chuyển hướng vì server sẽ xử lý
-        return;
-    }
-
-    // Thêm token vào header cho tất cả các request fetch
+    // Ensure credentials are sent with fetch requests
     const originalFetch = window.fetch;
     window.fetch = function(url, options = {}) {
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = `Bearer ${token}`;
+        options.credentials = options.credentials || 'same-origin';
         return originalFetch(url, options);
     };
 }
@@ -562,8 +557,6 @@ function deleteEvent(id) {
         return;
     }
 
-    const token = localStorage.getItem('jwt_token');
-
     // Lấy CSRF token từ meta tag
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -578,7 +571,6 @@ function deleteEvent(id) {
         body: formData,
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            'Authorization': token ? `Bearer ${token}` : '',
             'X-CSRF-TOKEN': csrfToken || ''
         },
         credentials: 'same-origin'
@@ -895,9 +887,6 @@ function navigateMiniNext() {
 
 // Fetch events from API
 function fetchEvents() {
-    // Lấy token từ localStorage
-    const token = localStorage.getItem('jwt_token');
-
     // Lấy CSRF token từ meta tag
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -909,7 +898,6 @@ function fetchEvents() {
     fetch('/api/calendar/events', {
         method: 'GET',
         headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-TOKEN': csrfToken || '',
@@ -1774,22 +1762,14 @@ function addEventsToDayView() {
 function loadEvents() {
     console.log('Đang tải sự kiện...');
 
-    // Lấy token JWT
-    const token = localStorage.getItem('jwt_token');
-
-    if (!token) {
-        console.error('Không tìm thấy JWT token, không thể tải sự kiện');
-        return;
-    }
-
     // Gọi API để lấy danh sách công việc
     fetch('/api/tasks', {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-        }
+        },
+        credentials: 'same-origin'
     })
     .then(response => {
         if (!response.ok) {
@@ -1818,14 +1798,6 @@ function loadEvents() {
 function kiemTraAPI() {
     console.log('Đang kiểm tra API...');
 
-    // Lấy token JWT
-    const token = localStorage.getItem('jwt_token');
-
-    if (!token) {
-        alert('Không tìm thấy JWT token. Vui lòng đăng nhập lại.');
-        return;
-    }
-
     // Hiển thị thông tin gỡ lỗi
     const thongTinLoi = document.createElement('div');
     thongTinLoi.style.position = 'fixed';
@@ -1846,10 +1818,10 @@ function kiemTraAPI() {
     fetch('/api/tasks', {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-        }
+        },
+        credentials: 'same-origin'
     })
     .then(response => {
         thongTinLoi.textContent += `\nPhản hồi API: ${response.status}`;
@@ -1880,16 +1852,5 @@ function kiemTraAPI() {
     thongTinLoi.appendChild(nutDong);
 }
 
-// Thêm nút kiểm tra khi trang tải xong
-document.addEventListener('DOMContentLoaded', function() {
-    // Thêm nút kiểm tra
-    const nutKiemTra = document.createElement('button');
-    nutKiemTra.textContent = 'Kiểm tra API';
-    nutKiemTra.style.position = 'fixed';
-    nutKiemTra.style.bottom = '10px';
-    nutKiemTra.style.left = '10px';
-    nutKiemTra.style.zIndex = '9999';
-    nutKiemTra.addEventListener('click', kiemTraAPI);
-    document.body.appendChild(nutKiemTra);
-});
+
 

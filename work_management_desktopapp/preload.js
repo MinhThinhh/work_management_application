@@ -12,6 +12,9 @@ try {
       checkToken: () => ipcRenderer.invoke('check-token'),
       getTasks: () => ipcRenderer.invoke('get-tasks'),
       addTask: (taskData) => ipcRenderer.invoke('add-task', taskData),
+      updateTask: (taskId, taskData) => ipcRenderer.invoke('update-task', taskId, taskData),
+      deleteTask: (taskId) => ipcRenderer.invoke('delete-task', taskId),
+      getUsers: () => ipcRenderer.invoke('get-users'),
       logout: () => ipcRenderer.invoke('logout'),
       checkApiConnection: () => ipcRenderer.invoke('check-api-connection')
     }

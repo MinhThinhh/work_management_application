@@ -11,18 +11,24 @@
         @method('PUT')
 
         <div class="form-group">
-            <label for="email" class="block mb-2">Email</label>
-            <input type="email" name="email" id="email" class="form-control" value="{{ old('email', $user->email) }}" required>
-            @error('email')
-                <div class="text-red-500 mt-1">{{ $message }}</div>
+            <label for="name" class="block mb-2">Họ và tên</label>
+            <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $user->name) }}" required>
+            @error('name')
+            <div class="text-red-500 mt-1">{{ $message }}</div>
             @enderror
+        </div>
+
+        <div class="form-group">
+            <label for="email" class="block mb-2">Email</label>
+            <input type="email" name="email" id="email" class="form-control bg-gray-100 cursor-not-allowed" value="{{ $user->email }}" readonly disabled>
+            <small class="text-gray-600 mt-1"><i class="fas fa-lock mr-1"></i>Email không thể thay đổi vì lý do bảo mật.</small>
         </div>
 
         <div class="form-group">
             <label for="password" class="block mb-2">Mật khẩu mới (để trống nếu không thay đổi)</label>
             <input type="password" name="password" id="password" class="form-control">
             @error('password')
-                <div class="text-red-500 mt-1">{{ $message }}</div>
+            <div class="text-red-500 mt-1">{{ $message }}</div>
             @enderror
         </div>
 
@@ -39,7 +45,7 @@
                 <option value="admin" {{ old('role', $user->role) == 'admin' ? 'selected' : '' }}>Admin</option>
             </select>
             @error('role')
-                <div class="text-red-500 mt-1">{{ $message }}</div>
+            <div class="text-red-500 mt-1">{{ $message }}</div>
             @enderror
         </div>
 

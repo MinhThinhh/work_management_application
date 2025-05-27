@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class AuthController extends Controller
 {
@@ -26,9 +29,25 @@ class AuthController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users',
-                'password' => 'required|min:6|confirmed',
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[a-zA-ZÀ-ỹ\s]+$/u' // Chỉ cho phép chữ cái và khoảng trắng (bao gồm tiếng Việt)
+                ],
+                'email' => 'required|email|unique:users,email',
+                'password' => [
+                    'required',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/' // Ít nhất 1 chữ thường, 1 chữ hoa, 1 số
+                ],
+            ], [
+                'name.regex' => 'Họ và tên chỉ được chứa chữ cái và khoảng trắng, không được chứa số.',
+                'email.unique' => 'Email này đã được sử dụng. Vui lòng chọn email khác.',
+                'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+                'password.regex' => 'Mật khẩu phải chứa ít nhất 1 chữ thường, 1 chữ hoa và 1 số.',
+                'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
             ]);
 
             $user = User::create([
@@ -101,15 +120,12 @@ class AuthController extends Controller
                         $payload = JWTAuth::setToken($token)->getPayload();
                         $expiration = $payload['exp'];
                         Log::info('JWT token hợp lệ, expires at: ' . date('Y-m-d H:i:s', $expiration));
-
-                        // Đặt thời gian sống cố định cho cookie (60 phút = 1 giờ)
-                        // Thời gian ngắn giúp tăng tính bảo mật
-                        $minutes = 60;
+                        $minutes = 15;
 
                         Log::info('Đặt thời gian sống cố định cho token: ' . $minutes . ' phút');
                     } catch (\Exception $e) {
                         Log::error('JWT token không hợp lệ: ' . $e->getMessage());
-                        $minutes = 60; // Mặc định 1 giờ
+                        $minutes = 15;
                     }
 
                     // Nếu yêu cầu API
@@ -117,18 +133,18 @@ class AuthController extends Controller
                         return response()->json(['token' => $token, 'user' => $user]);
                     }
 
-                    // Đăng nhập người dùng vào Laravel Auth
-                    Auth::login($user);
+                    // Không tự động đăng nhập vào Laravel Auth - sử dụng JWT hoàn toàn
+                    // Auth::login($user);
 
                     // Tạo cookie chứa token và chuyển hướng dựa trên role
                     $redirectTo = '/dashboard';
 
                     // Chuyển hướng dựa trên role
                     if ($user->role === 'admin') {
-                        $redirectTo = route('admin.dashboard');
+                        $redirectTo = route('admin.users');
                         Log::info('Chuyển hướng admin đến: ' . $redirectTo);
                     } elseif ($user->role === 'manager') {
-                        $redirectTo = route('manager.dashboard');
+                        $redirectTo = route('manager.all-tasks');
                         Log::info('Chuyển hướng manager đến: ' . $redirectTo);
                     } else {
                         $redirectTo = route('dashboard');
@@ -167,7 +183,6 @@ class AuthController extends Controller
             return back()->withErrors([
                 'email' => 'Thông tin đăng nhập không chính xác',
             ])->withInput();
-
         } catch (\Exception $e) {
             Log::error('Lỗi đăng nhập: ' . $e->getMessage());
 
@@ -246,15 +261,20 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Xử lý đăng xuất thông qua Laravel Auth
+            // Logout Laravel Auth session
             Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+
+            // Lấy JWT token từ cookie hoặc session
+            $token = null;
+            if ($request->cookie('jwt_token')) {
+                $token = $request->cookie('jwt_token');
+            } elseif (Session::has('jwt_token')) {
+                $token = Session::get('jwt_token');
+            }
 
             // Nếu có token JWT, vô hiệu hóa nó và thêm vào blacklist
-            if ($request->cookie('jwt_token')) {
+            if ($token) {
                 try {
-                    $token = $request->cookie('jwt_token');
                     JWTAuth::setToken($token);
                     $this->addTokenToBlacklist($token);
                     JWTAuth::invalidate($token);
@@ -262,6 +282,13 @@ class AuthController extends Controller
                     Log::error('Lỗi khi vô hiệu hóa token: ' . $e->getMessage());
                 }
             }
+
+            // Xóa JWT token khỏi session
+            Session::forget('jwt_token');
+
+            // Invalidate session và regenerate CSRF token
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -476,8 +503,8 @@ class AuthController extends Controller
                 Log::error('Lỗi khi vô hiệu hóa token sau khi đổi mật khẩu: ' . $e->getMessage());
             }
 
-            // Đăng nhập lại với mật khẩu mới
-            Auth::login($user);
+            // Không tự động đăng nhập lại - sử dụng JWT hoàn toàn
+            // Auth::login($user);
 
             // Tạo token JWT mới
             $token = JWTAuth::fromUser($user);

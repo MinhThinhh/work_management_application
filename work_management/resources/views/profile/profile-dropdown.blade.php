@@ -13,10 +13,7 @@
 
     <div class="profile-dropdown-item">
         <i class="fas fa-sign-out-alt"></i>
-        <form action="/logout" method="POST" class="logout-form">
-            @csrf
-            <button type="submit" id="logout-button-dropdown">Đăng xuất</button>
-        </form>
+        <a href="/logout" id="logout-button-dropdown">Đăng xuất</a>
     </div>
 </div>
 
