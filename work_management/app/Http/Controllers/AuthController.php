@@ -103,12 +103,17 @@ class AuthController extends Controller
                 }
             }
 
-            // Xác thực thông qua Laravel Auth - không sử dụng remember token vì lý do bảo mật
+            // Chỉ xác thực để lấy user, KHÔNG đăng nhập vào Laravel session
             if (Auth::attempt($credentials, false)) { // Luôn đặt remember = false
-                $request->session()->regenerate();
+                // KHÔNG regenerate session để tránh tự động đăng nhập
+                // $request->session()->regenerate();
 
                 // Tạo JWT token cho người dùng
                 $user = Auth::user();
+
+                // ĐĂNG XUẤT ngay lập tức để không lưu session
+                Auth::logout();
+
                 Log::info('Đăng nhập thành công cho user ID: ' . $user->id);
 
                 try {
@@ -166,7 +171,9 @@ class AuthController extends Controller
                         'Lax'             // SameSite (Lax cho phép gửi cookie khi chuyển hướng từ site khác)
                     );
 
-                    return redirect()->intended($redirectTo)->cookie($cookie);
+                    return redirect()->intended($redirectTo)
+                        ->with('login_success', 'Đăng nhập thành công! Chào mừng bạn trở lại, ' . $user->name . '!')
+                        ->cookie($cookie);
                 } catch (\Exception $jwtException) {
                     Log::error('Lỗi tạo JWT token: ' . $jwtException->getMessage());
                     throw $jwtException;
@@ -400,12 +407,12 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         try {
-            // Nếu người dùng đã đăng nhập qua Laravel Auth
-            if (Auth::check()) {
-                $user = Auth::user();
-                Log::info('User đã xác thực qua Laravel Auth: ' . $user->id);
-                return response()->json(['valid' => true, 'user' => $user]);
-            }
+            // KHÔNG kiểm tra Laravel Auth để buộc phải dùng JWT
+            // if (Auth::check()) {
+            //     $user = Auth::user();
+            //     Log::info('User đã xác thực qua Laravel Auth: ' . $user->id);
+            //     return response()->json(['valid' => true, 'user' => $user]);
+            // }
 
             // Lấy token từ request
             $token = null;
@@ -418,8 +425,8 @@ class AuthController extends Controller
             }
 
             // Nếu không có token trong header, kiểm tra trong session
-            if (!$token && Session::has('jwt_token')) {
-                $token = Session::get('jwt_token');
+            if (!$token && session()->has('jwt_token')) {
+                $token = session()->get('jwt_token');
                 JWTAuth::setToken($token);
             }
 

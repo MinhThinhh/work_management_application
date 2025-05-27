@@ -58,7 +58,7 @@ class WebAuthenticate
                 $user = JWTAuth::authenticate();
 
                 if ($user) {
-                    // Đăng nhập người dùng vào Laravel Auth
+                    // Đăng nhập tạm thời cho request này
                     Auth::login($user);
                     // Đồng bộ token vào session
                     Session::put('jwt_token', $token);

@@ -56,7 +56,7 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->group(function
 // Manager Routes - Chỉ quản lý công việc (require JWT authentication)
 Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('manager')->name('manager.')->group(function () {
     // Chuyển hướng dashboard đến tasks
-    Route::get('/dashboard', function() {
+    Route::get('/dashboard', function () {
         return redirect()->route('manager.all-tasks');
     })->name('dashboard');
     Route::get('/users', [ManagerController::class, 'users'])->name('users'); // Chuyển hướng về dashboard với thông báo
@@ -76,7 +76,7 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('manage
 // Admin Routes - Chỉ quản lý người dùng (require JWT authentication)
 Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('admin')->name('admin.')->group(function () {
     // Chuyển hướng dashboard đến users
-    Route::get('/dashboard', function() {
+    Route::get('/dashboard', function () {
         return redirect()->route('admin.users');
     })->name('dashboard');
 
@@ -89,17 +89,17 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('admin'
     Route::delete('/users/{id}', [AdminController::class, 'deleteUser'])->name('delete-user');
 
     // Admin không quản lý công việc - chuyển hướng về users
-    Route::get('/tasks', function() {
+    Route::get('/tasks', function () {
         return redirect()->route('admin.users');
     })->name('all-tasks');
 
     // Chuyển hướng reports đến users
-    Route::get('/reports', function() {
+    Route::get('/reports', function () {
         return redirect()->route('admin.users');
     })->name('reports');
 
     // Access to Manager Dashboard
-    Route::get('/manager-dashboard', function() {
+    Route::get('/manager-dashboard', function () {
         return redirect()->route('manager.all-tasks');
     })->name('manager-dashboard');
 
@@ -112,7 +112,7 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('admin'
 Route::get('/api/auth/session', [AuthController::class, 'me'])->middleware('jwt.verify')->name('session.verify');
 
 // Health check endpoint for desktop app
-Route::get('/health-check', function() {
+Route::get('/health-check', function () {
     return response()->json([
         'status' => 'ok',
         'message' => 'API is running',
@@ -121,7 +121,7 @@ Route::get('/health-check', function() {
 });
 
 // Force logout route - xóa hoàn toàn session và cookie
-Route::get('/force-logout', function(Request $request) {
+Route::get('/force-logout', function (Request $request) {
     // Đăng xuất Laravel Auth
     Auth::logout();
 

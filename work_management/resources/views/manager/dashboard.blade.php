@@ -109,11 +109,11 @@
                         <td>{{ $task->due_date ? date('d/m/Y', strtotime($task->due_date)) : 'Chưa đặt' }}</td>
                         <td>
                             @if($task->status == 'pending')
-                                <span class="badge badge-warning">Chưa hoàn thành</span>
+                            <span class="badge badge-warning">Chưa hoàn thành</span>
                             @elseif($task->status == 'in_progress')
-                                <span class="badge badge-info">Đang thực hiện</span>
+                            <span class="badge badge-info">Đang thực hiện</span>
                             @elseif($task->status == 'completed')
-                                <span class="badge badge-success">Hoàn thành</span>
+                            <span class="badge badge-success">Hoàn thành</span>
                             @endif
                         </td>
                         <td>
