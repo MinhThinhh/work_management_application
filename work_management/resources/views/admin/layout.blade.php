@@ -418,31 +418,15 @@
             <span class="logo">Admin Panel</span>
         </div>
         <nav class="mt-6">
-            <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
             <a href="{{ route('admin.users') }}" class="sidebar-link {{ request()->routeIs('admin.users') ? 'active' : '' }}">
                 <i class="fas fa-users"></i>
                 <span>Quản lý người dùng</span>
             </a>
-            <!-- Admin không quản lý công việc -->
-            <!-- <a href="{{ route('admin.dashboard') }}" class="sidebar-link">
-                <i class="fas fa-tasks"></i>
-                <span>Quản lý công việc</span>
-            </a> -->
-            <a href="{{ route('admin.reports') }}" class="sidebar-link {{ request()->routeIs('admin.reports') ? 'active' : '' }}">
-                <i class="fas fa-chart-bar"></i>
-                <span>Báo cáo & Thống kê</span>
-            </a>
             <div class="mt-auto p-4">
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="sidebar-link w-full text-left">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Đăng xuất</span>
-                    </button>
-                </form>
+                <a href="{{ route('logout') }}" class="sidebar-link w-full text-left">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Đăng xuất</span>
+                </a>
             </div>
         </nav>
     </div>

@@ -46,9 +46,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     console.log('API response:', data);
                     if (data.token) {
-                        // Lưu token vào localStorage
-                        localStorage.setItem('jwt_token', data.token);
-                        console.log('JWT token saved to localStorage');
+                        // Token is now handled by server-side cookies
+                        console.log('JWT token handled by server-side cookies');
                     }
                 })
                 .catch(error => {
@@ -66,26 +65,21 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupAxiosInterceptors() {
     // Kiểm tra xem Axios có được định nghĩa không
     if (typeof axios !== 'undefined') {
-        // Lấy token từ localStorage
-        const token = localStorage.getItem('jwt_token');
+        // JWT token is now handled by server-side cookies
+        // No need to set Authorization header manually
+        axios.defaults.withCredentials = true;
 
-        if (token) {
-            // Thêm token vào header Authorization cho tất cả các request
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-            // Xử lý lỗi 401 (Unauthorized)
-            axios.interceptors.response.use(
-                response => response,
-                error => {
-                    if (error.response && error.response.status === 401) {
-                        // Xóa token và chuyển hướng đến trang đăng nhập
-                        localStorage.removeItem('jwt_token');
-                        window.location.href = '/login';
-                    }
-                    return Promise.reject(error);
+        // Xử lý lỗi 401 (Unauthorized)
+        axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response && error.response.status === 401) {
+                    // Redirect to login page
+                    window.location.href = '/login';
                 }
-            );
-        }
+                return Promise.reject(error);
+            }
+        );
     }
 }
 

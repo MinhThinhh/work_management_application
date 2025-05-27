@@ -12,32 +12,6 @@ use Illuminate\Support\Facades\Log;
 class AdminController extends Controller
 {
     /**
-     * Hiển thị dashboard cho admin
-     */
-    public function dashboard()
-    {
-        try {
-            // Kiểm tra quyền truy cập
-            if (Auth::user()->role !== 'admin') {
-                return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
-            }
-
-            $totalUsers = User::count();
-            $totalTasks = Task::count();
-            $usersByRole = [
-                'admin' => User::where('role', 'admin')->count(),
-                'manager' => User::where('role', 'manager')->count(),
-                'user' => User::where('role', 'user')->count(),
-            ];
-
-            return view('admin.dashboard', compact('totalUsers', 'totalTasks', 'usersByRole'));
-        } catch (\Exception $e) {
-            Log::error('Error in AdminController@dashboard: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Hiển thị danh sách tất cả người dùng
      */
     public function users()
@@ -201,46 +175,6 @@ class AdminController extends Controller
             return view('admin.all-tasks', compact('tasks'));
         } catch (\Exception $e) {
             Log::error('Error in AdminController@allTasks: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Hiển thị báo cáo và thống kê
-     */
-    public function reports()
-    {
-        try {
-            // Kiểm tra quyền truy cập
-            if (Auth::user()->role !== 'admin') {
-                return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
-            }
-            $totalTasks = Task::count();
-            $pendingTasks = Task::where('status', 'pending')->count();
-            $inProgressTasks = Task::where('status', 'in_progress')->count();
-            $completedTasks = Task::where('status', 'completed')->count();
-
-            $userStats = User::withCount(['tasks as total_tasks',
-                        'tasks as pending_tasks' => function ($query) {
-                            $query->where('status', 'pending');
-                        },
-                        'tasks as in_progress_tasks' => function ($query) {
-                            $query->where('status', 'in_progress');
-                        },
-                        'tasks as completed_tasks' => function ($query) {
-                            $query->where('status', 'completed');
-                        }])
-                ->get();
-
-            return view('admin.reports', compact(
-                'totalTasks',
-                'pendingTasks',
-                'inProgressTasks',
-                'completedTasks',
-                'userStats'
-            ));
-        } catch (\Exception $e) {
-            Log::error('Error in AdminController@reports: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
         }
     }

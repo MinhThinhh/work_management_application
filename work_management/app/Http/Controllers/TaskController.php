@@ -16,11 +16,22 @@ class TaskController extends Controller
     public function index()
     {
         try {
+            // Kiểm tra authentication
+            if (!Auth::check()) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
             // Lấy user hiện tại
             $user = Auth::user();
 
-            // Lấy các task của user hiện tại
-            $tasks = Task::where('creator_id', $user->id)->get();
+            // Phân quyền: Manager xem tất cả tasks, User chỉ xem tasks của mình, Admin không xem tasks
+            if ($user->role === 'manager') {
+                $tasks = Task::with('creator')->get();
+            } elseif ($user->role === 'admin') {
+                return response()->json(['error' => 'Admin không có quyền xem tasks. Admin chỉ quản lý users.'], 403);
+            } else {
+                $tasks = Task::where('creator_id', $user->id)->get();
+            }
 
             return response()->json($tasks);
         } catch (\Exception $e) {
@@ -86,6 +97,14 @@ class TaskController extends Controller
                 $validatedData['status'] = 'pending';
             }
 
+            // Kiểm tra authentication
+            if (!Auth::check()) {
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => 'Unauthorized'], 401);
+                }
+                return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để tiếp tục.');
+            }
+
             $task = Task::create([
                 'title' => $validatedData['title'],
                 'description' => $validatedData['description'] ?? null,
@@ -93,7 +112,7 @@ class TaskController extends Controller
                 'due_date' => $validatedData['due_date'],
                 'status' => $validatedData['status'],
                 'priority' => $validatedData['priority'],
-                'creator_id' => Auth::id() ?? 1, // Nếu chưa đăng nhập thì gán 1 để test
+                'creator_id' => Auth::id(),
             ]);
 
             Log::info('Task created', ['task_id' => $task->id]);
@@ -159,6 +178,14 @@ class TaskController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            // Kiểm tra authentication
+            if (!Auth::check()) {
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => 'Unauthorized'], 401);
+                }
+                return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để tiếp tục.');
+            }
+
             $validatedData = $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
@@ -192,6 +219,14 @@ class TaskController extends Controller
     public function destroy($id)
     {
         try {
+            // Kiểm tra authentication
+            if (!Auth::check()) {
+                if (request()->wantsJson()) {
+                    return response()->json(['error' => 'Unauthorized'], 401);
+                }
+                return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để tiếp tục.');
+            }
+
             $task = Task::findOrFail($id);
             $task->delete();
 
@@ -388,13 +423,22 @@ class TaskController extends Controller
                 'start' => $startDate,
                 'end' => $endDate,
                 'date' => $date,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'user_role' => $user->role
             ]);
 
             $query = Task::query();
 
-            // Lọc theo user hiện tại
-            $query->where('creator_id', $user->id);
+            // Phân quyền: Manager xem tất cả tasks, User chỉ xem tasks của mình, Admin không xem tasks
+            if ($user->role === 'manager') {
+                // Manager xem tất cả tasks
+                $query->with('creator');
+            } elseif ($user->role === 'admin') {
+                return response()->json(['error' => 'Admin không có quyền xem tasks. Admin chỉ quản lý users.'], 403);
+            } else {
+                // User chỉ xem tasks của mình
+                $query->where('creator_id', $user->id);
+            }
 
             // Không lọc theo ngày nếu không có tham số
             if ($startDate) {

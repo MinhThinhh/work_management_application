@@ -22,9 +22,12 @@ class WebAuthenticate
      */
     public function handle(Request $request, Closure $next)
     {
-        // Kiểm tra xem người dùng đã đăng nhập thông qua Laravel Auth chưa
-        if (Auth::check()) {
-            return $next($request);
+        // Đăng xuất Laravel Auth để chỉ dựa vào JWT
+        Auth::logout();
+
+        // Không xóa session khi đang logout để giữ CSRF token
+        if (!$request->is('logout') && !$request->is('*/logout')) {
+            Session::flush(); // Chỉ xóa session khi không phải logout
         }
 
         // Kiểm tra xem có JWT token trong session không
@@ -32,6 +35,18 @@ class WebAuthenticate
             try {
                 $token = Session::get('jwt_token');
                 JWTAuth::setToken($token);
+
+                // Kiểm tra token có trong blacklist không
+                $payload = JWTAuth::getPayload($token);
+                $jti = $payload['jti'];
+                $blacklisted = \DB::table('blacklist_tokens')->where('token_id', $jti)->exists();
+
+                if ($blacklisted) {
+                    \Log::warning('Token in session is blacklisted: ' . substr($token, 0, 10) . '...');
+                    Session::forget('jwt_token');
+                    throw new TokenInvalidException('Token is blacklisted');
+                }
+
                 $user = JWTAuth::authenticate();
 
                 if ($user) {
@@ -43,7 +58,7 @@ class WebAuthenticate
                 // Token đã hết hạn, xóa khỏi session
                 Session::forget('jwt_token');
             } catch (TokenInvalidException $e) {
-                // Token không hợp lệ, xóa khỏi session
+                // Token không hợp lệ hoặc bị blacklist, xóa khỏi session
                 Session::forget('jwt_token');
             } catch (JWTException $e) {
                 // Lỗi khác, xóa token khỏi session
@@ -56,6 +71,18 @@ class WebAuthenticate
         if ($token) {
             try {
                 JWTAuth::setToken($token);
+
+                // Kiểm tra token có trong blacklist không
+                $payload = JWTAuth::getPayload($token);
+                $jti = $payload['jti'];
+                $blacklisted = \DB::table('blacklist_tokens')->where('token_id', $jti)->exists();
+
+                if ($blacklisted) {
+                    \Log::warning('Token in cookie is blacklisted: ' . substr($token, 0, 10) . '...');
+                    \Cookie::queue(\Cookie::forget('jwt_token'));
+                    throw new TokenInvalidException('Token is blacklisted');
+                }
+
                 $user = JWTAuth::authenticate();
 
                 if ($user) {
@@ -74,7 +101,7 @@ class WebAuthenticate
                 \Log::warning('Token expired in cookie: ' . substr($token, 0, 10) . '...');
                 \Cookie::queue(\Cookie::forget('jwt_token'));
             } catch (TokenInvalidException $e) {
-                // Token không hợp lệ, xóa cookie
+                // Token không hợp lệ hoặc bị blacklist, xóa cookie
                 \Log::warning('Invalid token in cookie: ' . substr($token, 0, 10) . '...');
                 \Cookie::queue(\Cookie::forget('jwt_token'));
             } catch (\Exception $e) {

@@ -10,8 +10,13 @@
 <div class="card">
     <div class="mb-4 flex justify-between items-center">
         <h2 class="text-xl font-semibold">Danh sách công việc</h2>
+        <a href="{{ route('manager.create-task') }}" class="btn btn-sm btn-success">
+            <i class="fas fa-plus"></i> Tạo công việc mới
+        </a>
     </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+    </div>
     <div class="overflow-x-auto">
         <table>
             <thead>

@@ -21,9 +21,13 @@ class JwtMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
+        // Đăng xuất Laravel Auth để chỉ dựa vào JWT
+        Auth::logout();
+
         try {
-            // Lấy token từ request
-            $token = $request->bearerToken();
+            // Lấy token từ Bearer header hoặc cookie
+            $token = $request->bearerToken() ?: $request->cookie('jwt_token');
+
             if (!$token) {
                 \Log::error('JWT Token is absent in request');
                 return response()->json(['error' => 'Token is absent'], 401);
@@ -33,6 +37,16 @@ class JwtMiddleware
 
             // Thiết lập token cho JWTAuth
             JWTAuth::setToken($token);
+
+            // Kiểm tra token có trong blacklist không
+            $payload = JWTAuth::getPayload($token);
+            $jti = $payload['jti'];
+            $blacklisted = \DB::table('blacklist_tokens')->where('token_id', $jti)->exists();
+
+            if ($blacklisted) {
+                \Log::warning('Token is blacklisted: ' . substr($token, 0, 10) . '...');
+                return response()->json(['error' => 'Token is blacklisted'], 401);
+            }
 
             // Xác thực token
             $user = JWTAuth::parseToken()->authenticate();

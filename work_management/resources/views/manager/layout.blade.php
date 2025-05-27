@@ -431,10 +431,6 @@
             <span class="logo">Manager Panel</span>
         </div>
         <nav class="mt-6">
-            <a href="{{ route('manager.dashboard') }}" class="sidebar-link {{ request()->routeIs('manager.dashboard') ? 'active' : '' }}">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
             <a href="{{ route('manager.all-tasks') }}" class="sidebar-link {{ request()->routeIs('manager.all-tasks') ? 'active' : '' }}">
                 <i class="fas fa-tasks"></i>
                 <span>Quản lý công việc</span>
@@ -444,13 +440,10 @@
                 <span>Báo cáo & Thống kê</span>
             </a>
             <div class="mt-auto p-4">
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="sidebar-link w-full text-left">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Đăng xuất</span>
-                    </button>
-                </form>
+                <a href="{{ route('logout') }}" class="sidebar-link w-full text-left">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Đăng xuất</span>
+                </a>
             </div>
         </nav>
     </div>

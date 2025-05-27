@@ -58,116 +58,19 @@
 @endsection
 
 @section('content')
-    @if(session('jwt_token'))
-        <script>
-            // Lưu JWT token vào localStorage
-            localStorage.setItem('jwt_token', '{{ session('jwt_token') }}');
-            console.log('JWT token saved from session to localStorage');
-        </script>
-    @endif
 
     <div id="jwt-status" class="hidden fixed top-0 right-0 m-4 p-3 rounded z-50" style="display: none;"></div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const statusDiv = document.getElementById('jwt-status');
+            // JWT authentication is now handled by server-side middleware
+            // No need to check localStorage token
+            console.log('JWT authentication handled by server middleware');
 
-            // Đảm bảo statusDiv tồn tại
-            if (!statusDiv) {
-                console.error('JWT status div not found');
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem('jwt_token');
-
-                if (token) {
-                    console.log('Found token in localStorage');
-
-                    // Hiển thị thông báo đang kiểm tra
-                    statusDiv.classList.remove('hidden');
-                    statusDiv.classList.add('bg-blue-100', 'border', 'border-blue-400', 'text-blue-700');
-                    statusDiv.textContent = 'Đang kiểm tra token...';
-
-                    // Kiểm tra token bằng cách gọi API
-                    fetch('/api/auth/session', {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': 'Bearer ' + token,
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/json'
-                        },
-                        credentials: 'same-origin'
-                    })
-                    .then(response => {
-                        // Chỉ log status, không log dữ liệu nhạy cảm
-                        if (response.ok) {
-                            return response.json();
-                        } else {
-                            console.error('Token check response not OK:', response.status);
-                            throw new Error('Lỗi kết nối đến API: ' + response.status);
-                        }
-                    })
-                    .then(data => {
-                        // Không log dữ liệu token để bảo mật
-
-                        if (data && data.valid === true) {
-                            // Token hợp lệ
-                            if (statusDiv) {
-                                statusDiv.classList.remove('bg-blue-100', 'border-blue-400', 'text-blue-700');
-                                statusDiv.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
-                                statusDiv.textContent = 'JWT Token hợp lệ';
-
-                                // Ẩn thông báo ngay lập tức
-                                statusDiv.classList.add('hidden');
-                            }
-                        } else {
-                            // Token không hợp lệ
-                            console.error('Token không hợp lệ:', data);
-                            handleInvalidToken(data && data.error ? data.error : 'Token không hợp lệ');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error checking token:', error);
-
-                        // Hiển thị thông báo lỗi chi tiết hơn
-                        let errorMessage = 'Lỗi kiểm tra token';
-
-                        if (error.message.includes('Failed to fetch')) {
-                            errorMessage = 'Không thể kết nối đến máy chủ API. Vui lòng kiểm tra kết nối mạng.';
-                        } else if (error.message.includes('404')) {
-                            errorMessage = 'API không tồn tại (404). Vui lòng kiểm tra cấu hình API.';
-                        } else if (error.message.includes('401')) {
-                            errorMessage = 'Không có quyền truy cập API (401). Token không hợp lệ.';
-                        } else {
-                            errorMessage = 'Lỗi kiểm tra token: ' + error.message;
-                        }
-
-                        handleInvalidToken(errorMessage);
-                    });
-                } else {
-                    console.log('No token found in localStorage');
-                    handleInvalidToken('Bạn chưa đăng nhập');
-                }
-            } catch (error) {
-                console.error('Error in token check script:', error);
-                handleInvalidToken('Lỗi xử lý token: ' + error.message);
-            }
-
-            // Hàm xử lý token không hợp lệ
-            function handleInvalidToken(message) {
-                // Xóa token không hợp lệ
-                try {
-                    localStorage.removeItem('jwt_token');
-                    console.log('Token removed from localStorage');
-                } catch (e) {
-                    console.error('Error removing token:', e);
-                }
-
-                // Hiển thị thông báo lỗi nhưng không chuyển hướng
-                // Vì middleware sẽ xử lý việc chuyển hướng nếu cần
-                console.log('Token không hợp lệ, nhưng không chuyển hướng vì middleware sẽ xử lý');
+            // Clear any existing localStorage token for security
+            if (localStorage.getItem('jwt_token')) {
+                localStorage.removeItem('jwt_token');
+                console.log('Cleared localStorage token for security');
             }
         });
     </script>

@@ -8,6 +8,9 @@
 <div class="card">
     <div class="mb-4 flex justify-between items-center">
         <h2 class="text-xl font-semibold">Danh sách người dùng</h2>
+        <a href="{{ route('admin.create-user') }}" class="btn btn-sm btn-success">
+            <i class="fas fa-user-plus"></i> Tạo người dùng mới
+        </a>
     </div>
 
     <div class="overflow-x-auto">
