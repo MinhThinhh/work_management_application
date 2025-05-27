@@ -112,7 +112,7 @@ class AuthController extends Controller
 
                         // Đặt thời gian sống cố định cho cookie (1 phút để test)
                         // Thời gian ngắn giúp tăng tính bảo mật
-                        $minutes = 1;
+                        $minutes = 5;
 
                         Log::info('Đặt thời gian sống cố định cho token: ' . $minutes . ' phút');
                     } catch (\Exception $e) {
@@ -158,7 +158,9 @@ class AuthController extends Controller
                         'Lax'             // SameSite (Lax cho phép gửi cookie khi chuyển hướng từ site khác)
                     );
 
-                    return redirect()->intended($redirectTo)->cookie($cookie);
+                    return redirect()->intended($redirectTo)
+                        ->with('login_success', 'Đăng nhập thành công! Chào mừng bạn trở lại, ' . $user->name . '!')
+                        ->cookie($cookie);
                 } catch (\Exception $jwtException) {
                     Log::error('Lỗi tạo JWT token: ' . $jwtException->getMessage());
                     throw $jwtException;
