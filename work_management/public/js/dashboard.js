@@ -1852,16 +1852,5 @@ function kiemTraAPI() {
     thongTinLoi.appendChild(nutDong);
 }
 
-// Thêm nút kiểm tra khi trang tải xong
-document.addEventListener('DOMContentLoaded', function() {
-    // Thêm nút kiểm tra
-    const nutKiemTra = document.createElement('button');
-    nutKiemTra.textContent = 'Kiểm tra API';
-    nutKiemTra.style.position = 'fixed';
-    nutKiemTra.style.bottom = '10px';
-    nutKiemTra.style.left = '10px';
-    nutKiemTra.style.zIndex = '9999';
-    nutKiemTra.addEventListener('click', kiemTraAPI);
-    document.body.appendChild(nutKiemTra);
-});
+
 

@@ -93,7 +93,7 @@
 
 
             <button class="button button--primary button--lg" data-event-create-button>
-                Create event
+                Tạo công việc mới
             </button>
 
             <div class="mini-calendar" data-mini-calendar>
@@ -143,7 +143,7 @@
                 <div class="nav__date-info">
                     <div class="nav__controls">
                         <button class="button button--secondary desktop-only" data-nav-today-button>
-                            Today
+                            Hôm nay
                         </button>
                         <button class="button button--icon button--secondary mobile-only" data-nav-today-button>
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button__icon">
@@ -200,9 +200,9 @@
 
                     <div class="select desktop-only">
                         <select class="select__select" data-view-select>
-                            <option value="day">Day</option>
-                            <option value="week">Week</option>
-                            <option value="month" selected>Month</option>
+                            <option value="day">Ngày</option>
+                            <option value="week">Tuần</option>
+                            <option value="month" selected>Tháng</option>
                         </select>
 
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="select__icon">

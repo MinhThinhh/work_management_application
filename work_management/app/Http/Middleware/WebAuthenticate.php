@@ -28,44 +28,18 @@ class WebAuthenticate
         // Không xóa session để giữ CSRF token và các thông tin quan trọng khác
         // Session::flush(); // Bỏ comment này để tránh xóa CSRF token
 
-        // Kiểm tra xem có JWT token trong session không
-        if (Session::has('jwt_token')) {
-            try {
-                $token = Session::get('jwt_token');
-                JWTAuth::setToken($token);
+        // THAY ĐỔI: Kiểm tra cookie TRƯỚC, nếu không có cookie thì xóa session token
+        $cookieToken = $request->cookie('jwt_token');
 
-                // Kiểm tra token có trong blacklist không
-                $payload = JWTAuth::getPayload($token);
-                $jti = $payload['jti'];
-                $blacklisted = \DB::table('blacklist_tokens')->where('token_id', $jti)->exists();
-
-                if ($blacklisted) {
-                    \Log::warning('Token in session is blacklisted: ' . substr($token, 0, 10) . '...');
-                    Session::forget('jwt_token');
-                    throw new TokenInvalidException('Token is blacklisted');
-                }
-
-                $user = JWTAuth::authenticate();
-
-                if ($user) {
-                    // Đăng nhập người dùng vào Laravel Auth
-                    Auth::login($user);
-                    return $next($request);
-                }
-            } catch (TokenExpiredException $e) {
-                // Token đã hết hạn, xóa khỏi session
-                Session::forget('jwt_token');
-            } catch (TokenInvalidException $e) {
-                // Token không hợp lệ hoặc bị blacklist, xóa khỏi session
-                Session::forget('jwt_token');
-            } catch (JWTException $e) {
-                // Lỗi khác, xóa token khỏi session
-                Session::forget('jwt_token');
-            }
+        // Nếu không có cookie token, xóa token khỏi session và logout
+        if (!$cookieToken) {
+            \Log::info('No JWT cookie found, clearing session token and redirecting to login');
+            Session::forget('jwt_token');
+            return redirect()->route('login')->with('info', 'Vui lòng đăng nhập để tiếp tục.');
         }
 
-        // Kiểm tra xem có JWT token trong cookie không
-        $token = $request->cookie('jwt_token');
+        // Nếu có cookie, kiểm tra cookie trước
+        $token = $cookieToken;
         if ($token) {
             try {
                 JWTAuth::setToken($token);
@@ -86,7 +60,7 @@ class WebAuthenticate
                 if ($user) {
                     // Đăng nhập người dùng vào Laravel Auth
                     Auth::login($user);
-                    // Lưu token vào session
+                    // Đồng bộ token vào session
                     Session::put('jwt_token', $token);
 
                     // Ghi log thành công
@@ -95,16 +69,19 @@ class WebAuthenticate
                     return $next($request);
                 }
             } catch (TokenExpiredException $e) {
-                // Token đã hết hạn, xóa cookie
+                // Token đã hết hạn, xóa cả cookie và session
                 \Log::warning('Token expired in cookie: ' . substr($token, 0, 10) . '...');
+                Session::forget('jwt_token');
                 \Cookie::queue(\Cookie::forget('jwt_token'));
             } catch (TokenInvalidException $e) {
-                // Token không hợp lệ hoặc bị blacklist, xóa cookie
+                // Token không hợp lệ hoặc bị blacklist, xóa cả cookie và session
                 \Log::warning('Invalid token in cookie: ' . substr($token, 0, 10) . '...');
+                Session::forget('jwt_token');
                 \Cookie::queue(\Cookie::forget('jwt_token'));
             } catch (\Exception $e) {
-                // Lỗi khác, xóa cookie
+                // Lỗi khác, xóa cả cookie và session
                 \Log::error('Error with token in cookie: ' . $e->getMessage());
+                Session::forget('jwt_token');
                 \Cookie::queue(\Cookie::forget('jwt_token'));
             }
         }

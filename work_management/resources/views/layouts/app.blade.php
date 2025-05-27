@@ -20,22 +20,7 @@
     @yield('styles')
 </head>
 <body class="bg-gray-100">
-    <nav class="bg-white p-4 shadow">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="/" class="font-bold text-xl">Work Management</a>
 
-            @auth
-                <div class="flex items-center space-x-4">
-                    @if(Auth::user()->role == 'admin')
-                        <a href="{{ route('admin.dashboard') }}" class="text-blue-600 hover:text-blue-800">Admin Dashboard</a>
-                    @elseif(Auth::user()->role == 'manager')
-                        <a href="{{ route('manager.dashboard') }}" class="text-blue-600 hover:text-blue-800">Manager Dashboard</a>
-                    @endif
-                </div>
-            @else
-            @endauth
-        </div>
-    </nav>
 
     <main class="container mx-auto mt-6 p-4">
         @yield('content')

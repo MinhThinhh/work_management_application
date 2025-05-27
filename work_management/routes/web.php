@@ -119,3 +119,33 @@ Route::get('/health-check', function() {
         'timestamp' => now()->toIso8601String()
     ]);
 });
+
+// Force logout route - xóa hoàn toàn session và cookie
+Route::get('/force-logout', function(Request $request) {
+    // Đăng xuất Laravel Auth
+    Auth::logout();
+
+    // Xóa hoàn toàn session
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    // Xóa JWT token khỏi session nếu có
+    $request->session()->forget('jwt_token');
+
+    // Tạo cookie hết hạn để xóa jwt_token
+    $cookie = cookie(
+        'jwt_token',      // Tên cookie
+        '',               // Giá trị rỗng
+        -1,               // Thời gian âm để xóa cookie
+        '/',              // Path
+        null,             // Domain
+        false,            // Secure (false cho HTTP local)
+        true,             // HttpOnly
+        false,            // Raw
+        'Lax'             // SameSite
+    );
+
+    return redirect('/login')
+        ->with('success', 'Đã đăng xuất hoàn toàn!')
+        ->cookie($cookie);
+});
