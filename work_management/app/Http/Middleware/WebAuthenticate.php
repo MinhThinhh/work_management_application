@@ -25,10 +25,8 @@ class WebAuthenticate
         // Đăng xuất Laravel Auth để chỉ dựa vào JWT
         Auth::logout();
 
-        // Không xóa session khi đang logout để giữ CSRF token
-        if (!$request->is('logout') && !$request->is('*/logout')) {
-            Session::flush(); // Chỉ xóa session khi không phải logout
-        }
+        // Không xóa session để giữ CSRF token và các thông tin quan trọng khác
+        // Session::flush(); // Bỏ comment này để tránh xóa CSRF token
 
         // Kiểm tra xem có JWT token trong session không
         if (Session::has('jwt_token')) {

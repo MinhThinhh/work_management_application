@@ -17,18 +17,19 @@
         }
 
         .profile-icon {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             background: #f0f0f0;
             color: #333;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             text-transform: uppercase;
-            border: 1px solid #e0e0e0;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .profile-dropdown {
@@ -36,9 +37,11 @@
             top: 50px;
             right: 0;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             z-index: 1000;
+            min-width: 200px;
+            border: 1px solid #f0f0f0;
         }
 
         .password-change-container,

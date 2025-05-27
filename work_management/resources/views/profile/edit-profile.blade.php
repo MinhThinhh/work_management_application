@@ -5,7 +5,7 @@
             <i class="fas fa-times"></i>
         </button>
     </div>
-    <form action="{{ route('user.update-profile') }}" method="POST" id="edit-profile-form">
+    <form action="@if(Auth::user()->role == 'manager'){{ route('manager.update-profile') }}@elseif(Auth::user()->role == 'admin'){{ route('admin.update-profile') }}@else{{ route('user.update-profile') }}@endif" method="POST" id="edit-profile-form">
         @csrf
         @method('PUT')
 

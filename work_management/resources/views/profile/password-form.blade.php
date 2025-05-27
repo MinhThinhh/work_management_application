@@ -18,7 +18,7 @@
         </div>
     @endif
 
-    <form action="{{ route('user.change-password') }}" method="POST">
+    <form action="@if(Auth::user()->role == 'manager'){{ route('manager.change-password') }}@elseif(Auth::user()->role == 'admin'){{ route('admin.change-password') }}@else{{ route('user.change-password') }}@endif" method="POST">
         @csrf
 
         <div class="form-group">

@@ -67,6 +67,10 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('manage
     Route::put('/tasks/{id}', [ManagerController::class, 'updateTask'])->name('update-task');
     Route::delete('/tasks/{id}', [ManagerController::class, 'deleteTask'])->name('delete-task');
     Route::get('/reports', [ManagerController::class, 'reports'])->name('reports');
+
+    // Manager Profile Routes
+    Route::post('/change-password', [AuthController::class, 'changePassword'])->name('change-password');
+    Route::put('/update-profile', [AuthController::class, 'updateProfile'])->name('update-profile');
 });
 
 // Admin Routes - Chỉ quản lý người dùng (require JWT authentication)
@@ -98,6 +102,10 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('admin'
     Route::get('/manager-dashboard', function() {
         return redirect()->route('manager.all-tasks');
     })->name('manager-dashboard');
+
+    // Admin Profile Routes
+    Route::post('/change-password', [AuthController::class, 'changePassword'])->name('change-password');
+    Route::put('/update-profile', [AuthController::class, 'updateProfile'])->name('update-profile');
 });
 
 // Public API Routes - session verify requires JWT authentication
