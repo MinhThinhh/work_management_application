@@ -29,9 +29,25 @@ class AuthController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users',
-                'password' => 'required|min:6|confirmed',
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[a-zA-ZÀ-ỹ\s]+$/u' // Chỉ cho phép chữ cái và khoảng trắng (bao gồm tiếng Việt)
+                ],
+                'email' => 'required|email|unique:users,email',
+                'password' => [
+                    'required',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/' // Ít nhất 1 chữ thường, 1 chữ hoa, 1 số
+                ],
+            ], [
+                'name.regex' => 'Họ và tên chỉ được chứa chữ cái và khoảng trắng, không được chứa số.',
+                'email.unique' => 'Email này đã được sử dụng. Vui lòng chọn email khác.',
+                'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+                'password.regex' => 'Mật khẩu phải chứa ít nhất 1 chữ thường, 1 chữ hoa và 1 số.',
+                'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
             ]);
 
             $user = User::create([
@@ -167,7 +183,6 @@ class AuthController extends Controller
             return back()->withErrors([
                 'email' => 'Thông tin đăng nhập không chính xác',
             ])->withInput();
-
         } catch (\Exception $e) {
             Log::error('Lỗi đăng nhập: ' . $e->getMessage());
 

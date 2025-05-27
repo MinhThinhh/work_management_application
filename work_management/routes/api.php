@@ -16,7 +16,7 @@ Route::post('register', [AuthController::class, 'register']);
 Route::post('desktop-login', [AuthController::class, 'desktopLogin']);
 
 // Desktop app add task endpoint
-Route::post('desktop-tasks', function(Request $request) {
+Route::post('desktop-tasks', function (Request $request) {
     try {
         // Lấy token từ request
         $token = $request->bearerToken();
@@ -93,7 +93,7 @@ Route::post('desktop-tasks', function(Request $request) {
 });
 
 // Desktop app tasks endpoint
-Route::get('desktop-tasks', function(Request $request) {
+Route::get('desktop-tasks', function (Request $request) {
     try {
         // Lấy token từ request
         $token = $request->bearerToken();
@@ -161,7 +161,7 @@ Route::get('desktop-tasks', function(Request $request) {
 });
 
 // Desktop app update task endpoint
-Route::put('desktop-tasks/{id}', function(Request $request, $id) {
+Route::put('desktop-tasks/{id}', function (Request $request, $id) {
     try {
         // Lấy token từ request
         $token = $request->bearerToken();
@@ -257,7 +257,7 @@ Route::put('desktop-tasks/{id}', function(Request $request, $id) {
 });
 
 // Desktop app delete task endpoint
-Route::delete('desktop-tasks/{id}', function(Request $request, $id) {
+Route::delete('desktop-tasks/{id}', function (Request $request, $id) {
     try {
         // Lấy token từ request
         $token = $request->bearerToken();
@@ -336,7 +336,7 @@ Route::delete('desktop-tasks/{id}', function(Request $request, $id) {
 });
 
 // Health check endpoint
-Route::get('health-check', function() {
+Route::get('health-check', function () {
     return response()->json([
         'status' => 'ok',
         'message' => 'API is running',
@@ -345,7 +345,7 @@ Route::get('health-check', function() {
 });
 
 // Route lấy token mới
-Route::post('get-token', function(Request $request) {
+Route::post('get-token', function (Request $request) {
     try {
         $credentials = $request->validate([
             'email' => 'required|email',
@@ -405,7 +405,7 @@ Route::post('get-token', function(Request $request) {
 });
 
 // Route kiểm tra token không cần middleware
-Route::get('token-info', function() {
+Route::get('token-info', function () {
     try {
         // Lấy token từ header Authorization
         $token = null;
@@ -476,14 +476,14 @@ Route::middleware('jwt.verify')->group(function () {
     Route::get('user', [AuthController::class, 'me']);  // Lấy thông tin user hiện tại
 
     // Route kiểm tra token
-    Route::get('check-token', function() {
+    Route::get('check-token', function () {
         return response()->json(['status' => 'Token is valid', 'user' => auth()->user()]);
     });
 });
 
 // API routes for managers and admins
 Route::prefix('manager')->group(function () {
-    Route::get('users', function() {
+    Route::get('users', function () {
         try {
             // Lấy token từ request
             $token = request()->bearerToken();
@@ -506,7 +506,7 @@ Route::prefix('manager')->group(function () {
         }
     });
 
-    Route::get('tasks/all', function() {
+    Route::get('tasks/all', function () {
         try {
             // Lấy token từ request
             $token = request()->bearerToken();
@@ -529,7 +529,7 @@ Route::prefix('manager')->group(function () {
         }
     });
 
-    Route::get('reports/summary', function() {
+    Route::get('reports/summary', function () {
         try {
             // Lấy token từ request
             $token = request()->bearerToken();
@@ -566,7 +566,7 @@ Route::prefix('manager')->group(function () {
     });
 
     // Manager task operations
-    Route::post('tasks', function(Request $request) {
+    Route::post('tasks', function (Request $request) {
         try {
             // Lấy token từ request
             $token = request()->bearerToken();
@@ -608,7 +608,7 @@ Route::prefix('manager')->group(function () {
         }
     });
 
-    Route::put('tasks/{id}', function(Request $request, $id) {
+    Route::put('tasks/{id}', function (Request $request, $id) {
         try {
             // Lấy token từ request
             $token = request()->bearerToken();
@@ -652,7 +652,7 @@ Route::prefix('manager')->group(function () {
         }
     });
 
-    Route::delete('tasks/{id}', function(Request $request, $id) {
+    Route::delete('tasks/{id}', function (Request $request, $id) {
         try {
             // Lấy token từ request
             $token = request()->bearerToken();
@@ -680,12 +680,12 @@ Route::prefix('manager')->group(function () {
 
 // API routes for admins only
 Route::prefix('admin')->group(function () {
-    Route::get('users', function() {
+    Route::get('users', function () {
         $users = \App\Models\User::all();
         return response()->json(['success' => true, 'users' => $users]);
     });
 
-    Route::post('users', function(Request $request) {
+    Route::post('users', function (Request $request) {
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -700,15 +700,14 @@ Route::prefix('admin')->group(function () {
         $user->role = $data['role'];
         $user->save();
 
-        return response()->json(['success' => true, 'user' => $user]);
+        return response()->json(['success' => true, 'user' => $user, 'message' => 'Người dùng đã được tạo thành công']);
     });
 
-    Route::put('users/{id}', function(Request $request, $id) {
+    Route::put('users/{id}', function (Request $request, $id) {
         $user = \App\Models\User::findOrFail($id);
 
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,'.$id,
             'role' => 'sometimes|in:admin,manager,user'
         ]);
 
@@ -716,21 +715,24 @@ Route::prefix('admin')->group(function () {
             $data['password'] = bcrypt($request->password);
         }
 
+        // Không cho phép cập nhật email vì lý do bảo mật
+        unset($data['email']);
+
         $user->update($data);
 
         return response()->json(['success' => true, 'user' => $user]);
     });
 
-    Route::delete('users/{id}', function($id) {
+    Route::delete('users/{id}', function ($id) {
         $user = \App\Models\User::findOrFail($id);
         $user->delete();
 
         return response()->json(['success' => true, 'message' => 'User deleted successfully']);
     });
 
-    Route::get('reports', function() {
+    Route::get('reports', function () {
         // Detailed reports for admin
-        $userStats = \App\Models\User::withCount('tasks')->get()->groupBy('role')->map(function($users) {
+        $userStats = \App\Models\User::withCount('tasks')->get()->groupBy('role')->map(function ($users) {
             return [
                 'count' => $users->count(),
                 'tasks_count' => $users->sum('tasks_count')
@@ -757,5 +759,3 @@ Route::prefix('admin')->group(function () {
         ]);
     });
 });
-
-?>
