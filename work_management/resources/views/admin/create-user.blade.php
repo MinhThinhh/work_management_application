@@ -15,7 +15,7 @@
                 pattern="^[a-zA-ZÀ-ỹ\s]+$"
                 title="Họ và tên chỉ được chứa chữ cái và khoảng trắng, không được chứa số"
                 required>
-            <small class="text-gray-600 text-xs">Chỉ được chứa chữ cái và khoảng trắng, không được chứa số</small>
+            <!-- <small class="text-gray-600 text-xs">Chỉ được chứa chữ cái và khoảng trắng, không được chứa số</small> -->
             @error('name')
             <div class="text-red-500 mt-1">{{ $message }}</div>
             @enderror
@@ -36,7 +36,7 @@
                 pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$"
                 title="Mật khẩu phải có ít nhất 8 ký tự, bao gồm 1 chữ thường, 1 chữ hoa và 1 số"
                 required>
-            <small class="text-gray-600 text-xs">Mật khẩu phải có ít nhất 8 ký tự, bao gồm 1 chữ thường, 1 chữ hoa và 1 số</small>
+            <!-- <small class="text-gray-600 text-xs">Mật khẩu phải có ít nhất 8 ký tự, bao gồm 1 chữ thường, 1 chữ hoa và 1 số</small> -->
             @error('password')
             <div class="text-red-500 mt-1">{{ $message }}</div>
             @enderror
