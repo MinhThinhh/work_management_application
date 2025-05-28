@@ -574,8 +574,11 @@ function showEventDetails(event) {
     editButton.classList.add("button", "button--primary");
     editButton.textContent = "Chỉnh sửa";
     editButton.addEventListener("click", () => {
-        // Redirect to edit page
-        window.location.href = `/tasks/${event.id}/edit`;
+        // Close current modal first
+        document.body.removeChild(modal);
+        removeOverlay();
+        // Open edit dialog
+        openEditEventDialog(event);
     });
     actions.appendChild(editButton);
 
@@ -1240,6 +1243,16 @@ function openCreateEventDialog() {
         // Đảm bảo form có action đúng
         const form = dialog.querySelector("form");
         if (form) {
+            // Reset form for create mode
+            form.reset();
+            form.action = "/tasks";
+
+            // Remove method field if exists (for create mode)
+            const methodField = form.querySelector('input[name="_method"]');
+            if (methodField) {
+                methodField.remove();
+            }
+
             // Đảm bảo form sử dụng phương thức POST
             form.method = "POST";
 
@@ -1451,6 +1464,236 @@ function formatDateForInput(date) {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+}
+
+// Open edit event dialog
+function openEditEventDialog(event) {
+    // Tạo overlay trước khi mở dialog
+    createOverlay();
+
+    const dialog = document.querySelector('[data-dialog="event-form"]');
+    if (dialog) {
+        // Set dialog title
+        const dialogTitle = dialog.querySelector("[data-dialog-title]");
+        if (dialogTitle) {
+            dialogTitle.textContent = "Chỉnh sửa công việc";
+        }
+
+        // Thêm sự kiện để xóa overlay khi đóng dialog
+        dialog.addEventListener("close", removeOverlay, { once: true });
+
+        // Fill form with event data
+        const form = dialog.querySelector("form");
+        if (form) {
+            // Set form action for update
+            form.action = `/tasks/${event.id}`;
+
+            // Add method field for PUT request
+            let methodField = form.querySelector('input[name="_method"]');
+            if (!methodField) {
+                methodField = document.createElement("input");
+                methodField.type = "hidden";
+                methodField.name = "_method";
+                form.appendChild(methodField);
+            }
+            methodField.value = "PUT";
+
+            // Fill form fields
+            const titleInput = form.querySelector("#title");
+            if (titleInput) titleInput.value = event.title || "";
+
+            const descriptionInput = form.querySelector("#description");
+            if (descriptionInput)
+                descriptionInput.value = event.description || "";
+
+            const startDateInput = form.querySelector("#start_date");
+            if (startDateInput) {
+                const startDate = event.start_date || event.date || event.start;
+                if (startDate) {
+                    startDateInput.value = formatDateForInput(
+                        new Date(startDate)
+                    );
+                }
+            }
+
+            const dueDateInput = form.querySelector("#due_date");
+            if (dueDateInput) {
+                const dueDate = event.due_date || event.end;
+                if (dueDate) {
+                    dueDateInput.value = formatDateForInput(new Date(dueDate));
+                }
+            }
+
+            const prioritySelect = form.querySelector("#priority");
+            if (prioritySelect && event.priority) {
+                prioritySelect.value = event.priority;
+            }
+
+            const statusSelect = form.querySelector("#status");
+            if (statusSelect && event.status) {
+                statusSelect.value = event.status;
+            }
+
+            // Update form submit handler for edit
+            form.onsubmit = function (e) {
+                e.preventDefault();
+
+                // Lấy dữ liệu form và chuyển thành JSON
+                const formData = new FormData(form);
+                const formDataObj = {};
+
+                // Chuyển FormData thành object
+                for (let [key, value] of formData.entries()) {
+                    if (key !== "_method") {
+                        // Exclude _method from JSON data
+                        formDataObj[key] = value;
+                    }
+                }
+
+                // Debug: Hiển thị dữ liệu form
+                console.log("Edit form data:", formDataObj);
+
+                // Lấy CSRF token từ meta tag
+                const csrfToken = document
+                    .querySelector('meta[name="csrf-token"]')
+                    ?.getAttribute("content");
+
+                console.log("Updating task with ID:", event.id);
+
+                // Gửi request bằng fetch API
+                fetch(`/tasks/${event.id}`, {
+                    method: "PUT",
+                    body: JSON.stringify(formDataObj),
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRF-TOKEN": csrfToken || "",
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    credentials: "same-origin",
+                })
+                    .then((response) => {
+                        // Nếu response không ok, xử lý lỗi
+                        if (!response.ok) {
+                            // Tạo một đối tượng lỗi với response để xử lý sau
+                            const error = new Error(
+                                "Lỗi khi cập nhật công việc: " + response.status
+                            );
+                            error.response = response;
+                            throw error;
+                        }
+
+                        // Kiểm tra content-type
+                        const contentType =
+                            response.headers.get("content-type");
+                        if (
+                            contentType &&
+                            contentType.includes("application/json")
+                        ) {
+                            return response.json();
+                        } else {
+                            // Nếu không phải JSON, trả về object đơn giản
+                            return {
+                                success: true,
+                                message:
+                                    "Công việc đã được cập nhật thành công!",
+                            };
+                        }
+                    })
+                    .then((data) => {
+                        console.log("Công việc đã được cập nhật:", data);
+
+                        // Hiển thị thông báo thành công (bao gồm cả warning nếu có)
+                        let message = "Công việc đã được cập nhật thành công!";
+                        if (data.warning) {
+                            message += " " + data.warning;
+                        }
+                        showNotification(message, "success");
+
+                        // Reset form
+                        form.reset();
+
+                        // Đóng dialog sau một khoảng thời gian ngắn
+                        setTimeout(() => {
+                            dialog.close();
+
+                            // Cập nhật lại calendar
+                            fetchEvents();
+                        }, 500);
+                    })
+                    .catch((error) => {
+                        console.error("Lỗi khi cập nhật công việc:", error);
+
+                        // Xử lý phản hồi lỗi từ server
+                        if (error.response) {
+                            // Lỗi validation
+                            error.response
+                                .json()
+                                .then((data) => {
+                                    let errorMessage =
+                                        "Lỗi khi cập nhật công việc: ";
+                                    if (data.errors) {
+                                        // Lấy tất cả các lỗi validation
+                                        const errorMessages = Object.values(
+                                            data.errors
+                                        ).flat();
+                                        errorMessage +=
+                                            errorMessages.join(", ");
+                                    } else if (data.message) {
+                                        errorMessage += data.message;
+                                    } else {
+                                        errorMessage += "Dữ liệu không hợp lệ";
+                                    }
+                                    showNotification(errorMessage, "error");
+                                })
+                                .catch((jsonError) => {
+                                    console.error(
+                                        "Lỗi khi parse JSON:",
+                                        jsonError
+                                    );
+                                    showNotification(
+                                        "Lỗi khi cập nhật công việc: Dữ liệu không hợp lệ",
+                                        "error"
+                                    );
+                                });
+                        } else {
+                            // Hiển thị thông báo lỗi chung
+                            showNotification(
+                                "Lỗi khi cập nhật công việc: " + error.message,
+                                "error"
+                            );
+                        }
+                    });
+            };
+        }
+
+        // Xử lý nút đóng dialog
+        const closeButtons = dialog.querySelectorAll(
+            "[data-dialog-close-button]"
+        );
+        closeButtons.forEach((button) => {
+            // Xóa tất cả event listeners cũ
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+
+            // Thêm event listener mới
+            newButton.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dialog.close();
+            });
+        });
+
+        // Show dialog
+        dialog.showModal();
+
+        // Thêm sự kiện click bên ngoài để đóng dialog
+        dialog.addEventListener("click", function (e) {
+            if (e.target === dialog) {
+                dialog.close();
+            }
+        });
+    }
 }
 
 // Render week view
