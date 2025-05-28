@@ -105,11 +105,14 @@ class ManagerController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'start_date' => 'nullable|date',
-                'due_date' => 'nullable|date|after_or_equal:start_date',
+                'due_date' => 'nullable|date',
                 'status' => 'required|in:pending,in_progress,completed',
                 'priority' => 'required|in:low,medium,high',
                 'user_id' => 'required|exists:users,id',
             ]);
+
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = Task::validateAndAdjustDates($validatedData);
 
             $task = Task::create([
                 'title' => $validatedData['title'],
@@ -121,7 +124,12 @@ class ManagerController extends Controller
                 'creator_id' => $validatedData['user_id'],
             ]);
 
-            return redirect()->route('manager.all-tasks')->with('success', 'Công việc đã được tạo thành công.');
+            $successMessage = 'Công việc đã được tạo thành công.';
+            if ($dateMessage) {
+                $successMessage .= ' ' . $dateMessage;
+            }
+
+            return redirect()->route('manager.all-tasks')->with('success', $successMessage);
         } catch (\Exception $e) {
             Log::error('Error in ManagerController@storeTask: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage())->withInput();
@@ -163,11 +171,14 @@ class ManagerController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'start_date' => 'nullable|date',
-                'due_date' => 'nullable|date|after_or_equal:start_date',
+                'due_date' => 'nullable|date',
                 'status' => 'required|in:pending,in_progress,completed',
                 'priority' => 'required|in:low,medium,high',
                 'user_id' => 'required|exists:users,id',
             ]);
+
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = Task::validateAndAdjustDates($validatedData);
 
             $task->update([
                 'title' => $validatedData['title'],
@@ -179,7 +190,12 @@ class ManagerController extends Controller
                 'creator_id' => $validatedData['user_id'],
             ]);
 
-            return redirect()->route('manager.all-tasks')->with('success', 'Công việc đã được cập nhật thành công.');
+            $successMessage = 'Công việc đã được cập nhật thành công.';
+            if ($dateMessage) {
+                $successMessage .= ' ' . $dateMessage;
+            }
+
+            return redirect()->route('manager.all-tasks')->with('success', $successMessage);
         } catch (\Exception $e) {
             Log::error('Error in ManagerController@updateTask: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage())->withInput();
@@ -222,16 +238,18 @@ class ManagerController extends Controller
             $completedTasks = Task::where('status', 'completed')->count();
 
             $userStats = User::where('role', 'user')
-                ->withCount(['tasks as total_tasks',
-                            'tasks as pending_tasks' => function ($query) {
-                                $query->where('status', 'pending');
-                            },
-                            'tasks as in_progress_tasks' => function ($query) {
-                                $query->where('status', 'in_progress');
-                            },
-                            'tasks as completed_tasks' => function ($query) {
-                                $query->where('status', 'completed');
-                            }])
+                ->withCount([
+                    'tasks as total_tasks',
+                    'tasks as pending_tasks' => function ($query) {
+                        $query->where('status', 'pending');
+                    },
+                    'tasks as in_progress_tasks' => function ($query) {
+                        $query->where('status', 'in_progress');
+                    },
+                    'tasks as completed_tasks' => function ($query) {
+                        $query->where('status', 'completed');
+                    }
+                ])
                 ->get();
 
             return view('manager.reports', compact(

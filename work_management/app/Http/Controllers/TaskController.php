@@ -69,7 +69,6 @@ class TaskController extends Controller
             }
 
             return view('dashboard', compact('tasks', 'calendarEvents'));
-
         } catch (\Exception $e) {
             Log::error('Error in TaskController@dashboard: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
@@ -105,6 +104,9 @@ class TaskController extends Controller
                 return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để tiếp tục.');
             }
 
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = Task::validateAndAdjustDates($validatedData);
+
             $task = Task::create([
                 'title' => $validatedData['title'],
                 'description' => $validatedData['description'] ?? null,
@@ -118,10 +120,19 @@ class TaskController extends Controller
             Log::info('Task created', ['task_id' => $task->id]);
 
             if ($request->wantsJson()) {
-                return response()->json($task, 201);
+                $response = ['task' => $task];
+                if ($dateMessage) {
+                    $response['warning'] = $dateMessage;
+                }
+                return response()->json($response, 201);
             }
 
-            return redirect()->route('dashboard')->with('success', 'Công việc đã được tạo thành công!');
+            $successMessage = 'Công việc đã được tạo thành công!';
+            if ($dateMessage) {
+                $successMessage .= ' ' . $dateMessage;
+            }
+
+            return redirect()->route('dashboard')->with('success', $successMessage);
         } catch (\Exception $e) {
             Log::error('Error in TaskController@store: ' . $e->getMessage());
 
@@ -195,16 +206,28 @@ class TaskController extends Controller
                 'status' => 'required|in:pending,in_progress,completed',
             ]);
 
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = Task::validateAndAdjustDates($validatedData);
+
             $task = Task::findOrFail($id);
             $task->update($validatedData);
 
             Log::info('Task updated', ['task_id' => $task->id]);
 
             if ($request->wantsJson()) {
-                return response()->json($task);
+                $response = ['task' => $task];
+                if ($dateMessage) {
+                    $response['warning'] = $dateMessage;
+                }
+                return response()->json($response);
             }
 
-            return redirect()->route('dashboard')->with('success', 'Công việc đã được cập nhật thành công!');
+            $successMessage = 'Công việc đã được cập nhật thành công!';
+            if ($dateMessage) {
+                $successMessage .= ' ' . $dateMessage;
+            }
+
+            return redirect()->route('dashboard')->with('success', $successMessage);
         } catch (\Exception $e) {
             Log::error('Error in TaskController@update: ' . $e->getMessage());
 
@@ -357,29 +380,29 @@ class TaskController extends Controller
             $user = Auth::user();
 
             $events = Task::where('creator_id', $user->id) // Lọc theo user hiện tại
-            ->where(function($query) use ($startDate, $endDate) {
-                $query->where(function($q) use ($startDate, $endDate) {
-                    $q->whereDate('start_date', '>=', $startDate)
-                      ->whereDate('start_date', '<=', $endDate);
-                })->orWhere(function($q) use ($startDate, $endDate) {
-                    $q->whereDate('due_date', '>=', $startDate)
-                      ->whereDate('due_date', '<=', $endDate);
-                })->orWhere(function($q) use ($startDate, $endDate) {
-                    $q->whereDate('start_date', '<=', $startDate)
-                      ->whereDate('due_date', '>=', $endDate);
+                ->where(function ($query) use ($startDate, $endDate) {
+                    $query->where(function ($q) use ($startDate, $endDate) {
+                        $q->whereDate('start_date', '>=', $startDate)
+                            ->whereDate('start_date', '<=', $endDate);
+                    })->orWhere(function ($q) use ($startDate, $endDate) {
+                        $q->whereDate('due_date', '>=', $startDate)
+                            ->whereDate('due_date', '<=', $endDate);
+                    })->orWhere(function ($q) use ($startDate, $endDate) {
+                        $q->whereDate('start_date', '<=', $startDate)
+                            ->whereDate('due_date', '>=', $endDate);
+                    });
+                })->get()->map(function ($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'description' => $task->description,
+                        'start' => $task->start_date,
+                        'end' => $task->due_date,
+                        'color' => $this->getPriorityColor($task->priority),
+                        'priority' => $task->priority,
+                        'status' => $task->status
+                    ];
                 });
-            })->get()->map(function ($task) {
-                return [
-                    'id' => $task->id,
-                    'title' => $task->title,
-                    'description' => $task->description,
-                    'start' => $task->start_date,
-                    'end' => $task->due_date,
-                    'color' => $this->getPriorityColor($task->priority),
-                    'priority' => $task->priority,
-                    'status' => $task->status
-                ];
-            });
 
             return response()->json($events);
         } catch (\Exception $e) {
@@ -390,21 +413,29 @@ class TaskController extends Controller
 
     private function getPriorityColor($priority)
     {
-        switch($priority) {
-            case 'high': return '#EF4444';
-            case 'medium': return '#3B82F6';
-            case 'low': return '#9CA3AF';
-            default: return '#6B7280';
+        switch ($priority) {
+            case 'high':
+                return '#EF4444';
+            case 'medium':
+                return '#3B82F6';
+            case 'low':
+                return '#9CA3AF';
+            default:
+                return '#6B7280';
         }
     }
 
     private function getPriorityBorderColor($priority)
     {
-        switch($priority) {
-            case 'high': return '#B91C1C';
-            case 'medium': return '#2563EB';
-            case 'low': return '#4B5563';
-            default: return '#4B5563';
+        switch ($priority) {
+            case 'high':
+                return '#B91C1C';
+            case 'medium':
+                return '#2563EB';
+            case 'low':
+                return '#4B5563';
+            default:
+                return '#4B5563';
         }
     }
 
@@ -451,7 +482,7 @@ class TaskController extends Controller
 
             if ($date) {
                 $query->whereDate('start_date', '<=', $date)
-                      ->whereDate('due_date', '>=', $date);
+                    ->whereDate('due_date', '>=', $date);
             }
 
             $tasks = $query->get();

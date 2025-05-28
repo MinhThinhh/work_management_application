@@ -3,9 +3,9 @@
 @section('content')
 <div class="container mx-auto">
     @if(session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ session('error') }}
-        </div>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        {{ session('error') }}
+    </div>
     @endif
 
     <!-- Form ẩn để lưu dữ liệu task -->
@@ -30,10 +30,10 @@
 </div>
 
 @section('styles')
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 @endsection
 
 @section('scripts')
-    <script src="{{ asset('js/edit-task.js') }}"></script>
+<script src="{{ asset('js/edit-task.js') }}"></script>
 @endsection
 @endsection

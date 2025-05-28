@@ -46,23 +46,42 @@ Route::post('desktop-tasks', function (Request $request) {
 
             \Log::info('Desktop add task: User authenticated: ' . $user->id);
 
+            // Chuẩn bị dữ liệu để kiểm tra và điều chỉnh ngày
+            $taskData = [
+                'title' => $request->title,
+                'description' => $request->description,
+                'start_date' => $request->start_date,
+                'due_date' => $request->due_date,
+                'status' => $request->status,
+                'priority' => $request->priority,
+            ];
+
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = \App\Models\Task::validateAndAdjustDates($taskData);
+
             // Tạo công việc mới
             $task = new \App\Models\Task();
-            $task->title = $request->title;
-            $task->description = $request->description;
-            $task->start_date = $request->start_date;
-            $task->due_date = $request->due_date;
-            $task->status = $request->status;
-            $task->priority = $request->priority;
+            $task->title = $taskData['title'];
+            $task->description = $taskData['description'];
+            $task->start_date = $taskData['start_date'];
+            $task->due_date = $taskData['due_date'];
+            $task->status = $taskData['status'];
+            $task->priority = $taskData['priority'];
             $task->creator_id = $user->id;
             $task->save();
 
             \Log::info('Desktop add task: Task created with ID: ' . $task->id);
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'task' => $task
-            ]);
+            ];
+
+            if ($dateMessage) {
+                $response['warning'] = $dateMessage;
+            }
+
+            return response()->json($response);
         } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
             \Log::error('Desktop add task: Token has expired: ' . $e->getMessage());
             return response()->json([
@@ -211,15 +230,24 @@ Route::put('desktop-tasks/{id}', function (Request $request, $id) {
                 'status' => 'required|in:pending,in_progress,completed',
             ]);
 
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = \App\Models\Task::validateAndAdjustDates($validatedData);
+
             // Cập nhật task
             $task->update($validatedData);
 
             \Log::info('Desktop update task: Task updated with ID: ' . $task->id);
 
-            return response()->json([
+            $response = [
                 'success' => true,
                 'task' => $task
-            ]);
+            ];
+
+            if ($dateMessage) {
+                $response['warning'] = $dateMessage;
+            }
+
+            return response()->json($response);
         } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
             \Log::error('Desktop update task: Token has expired: ' . $e->getMessage());
             return response()->json([
@@ -592,6 +620,9 @@ Route::prefix('manager')->group(function () {
                 'user_id' => 'required|exists:users,id',
             ]);
 
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = \App\Models\Task::validateAndAdjustDates($validatedData);
+
             $task = \App\Models\Task::create([
                 'title' => $validatedData['title'],
                 'description' => $validatedData['description'],
@@ -602,7 +633,12 @@ Route::prefix('manager')->group(function () {
                 'creator_id' => $validatedData['user_id'],
             ]);
 
-            return response()->json(['success' => true, 'task' => $task]);
+            $response = ['success' => true, 'task' => $task];
+            if ($dateMessage) {
+                $response['warning'] = $dateMessage;
+            }
+
+            return response()->json($response);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -636,6 +672,9 @@ Route::prefix('manager')->group(function () {
                 'user_id' => 'required|exists:users,id',
             ]);
 
+            // Kiểm tra và điều chỉnh ngày nếu due_date < start_date
+            $dateMessage = \App\Models\Task::validateAndAdjustDates($validatedData);
+
             $task->update([
                 'title' => $validatedData['title'],
                 'description' => $validatedData['description'],
@@ -646,7 +685,12 @@ Route::prefix('manager')->group(function () {
                 'creator_id' => $validatedData['user_id'],
             ]);
 
-            return response()->json(['success' => true, 'task' => $task]);
+            $response = ['success' => true, 'task' => $task];
+            if ($dateMessage) {
+                $response['warning'] = $dateMessage;
+            }
+
+            return response()->json($response);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }

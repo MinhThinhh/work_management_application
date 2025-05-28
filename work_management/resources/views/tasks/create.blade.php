@@ -10,9 +10,9 @@
     </div>
 
     @if(session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ session('error') }}
-        </div>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        {{ session('error') }}
+    </div>
     @endif
 
     <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -26,10 +26,9 @@
                     id="title"
                     value="{{ old('title') }}"
                     class="w-full border border-gray-300 rounded px-3 py-2 @error('title') border-red-500 @enderror"
-                    required
-                />
+                    required />
                 @error('title')
-                    <p class="text-red-500 text-xs italic">{{ $message }}</p>
+                <p class="text-red-500 text-xs italic">{{ $message }}</p>
                 @enderror
             </div>
             <div class="mb-4">
@@ -38,10 +37,9 @@
                     name="description"
                     id="description"
                     class="w-full border border-gray-300 rounded px-3 py-2 @error('description') border-red-500 @enderror"
-                    rows="3"
-                >{{ old('description') }}</textarea>
+                    rows="3">{{ old('description') }}</textarea>
                 @error('description')
-                    <p class="text-red-500 text-xs italic">{{ $message }}</p>
+                <p class="text-red-500 text-xs italic">{{ $message }}</p>
                 @enderror
             </div>
             <div class="mb-4">
@@ -52,10 +50,9 @@
                     id="due_date"
                     value="{{ old('due_date') }}"
                     class="w-full border border-gray-300 rounded px-3 py-2 @error('due_date') border-red-500 @enderror"
-                    required
-                />
+                    required />
                 @error('due_date')
-                    <p class="text-red-500 text-xs italic">{{ $message }}</p>
+                <p class="text-red-500 text-xs italic">{{ $message }}</p>
                 @enderror
             </div>
             <div class="mb-4">
@@ -63,14 +60,13 @@
                 <select
                     name="priority"
                     id="priority"
-                    class="w-full border border-gray-300 rounded px-3 py-2 @error('priority') border-red-500 @enderror"
-                >
+                    class="w-full border border-gray-300 rounded px-3 py-2 @error('priority') border-red-500 @enderror">
                     <option value="low" {{ old('priority') == 'low' ? 'selected' : '' }}>Thấp</option>
                     <option value="medium" {{ old('priority') == 'medium' || !old('priority') ? 'selected' : '' }}>Trung bình</option>
                     <option value="high" {{ old('priority') == 'high' ? 'selected' : '' }}>Cao</option>
                 </select>
                 @error('priority')
-                    <p class="text-red-500 text-xs italic">{{ $message }}</p>
+                <p class="text-red-500 text-xs italic">{{ $message }}</p>
                 @enderror
             </div>
             <div class="flex space-x-4">
@@ -84,4 +80,4 @@
         </form>
     </div>
 </div>
-@endsection 
+@endsection
