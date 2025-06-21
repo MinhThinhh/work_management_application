@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AdminController extends Controller
 {
@@ -17,14 +18,53 @@ class AdminController extends Controller
     public function users()
     {
         try {
+            // JWT Authentication cho desktop app (chỉ khi có Authorization header)
+            if (request()->header('Authorization') && !Auth::check()) {
+                $token = str_replace('Bearer ', '', request()->header('Authorization'));
+                try {
+                    JWTAuth::setToken($token);
+                    $user = JWTAuth::parseToken()->authenticate();
+                    if (!$user) {
+                        return response()->json(['success' => false, 'error' => 'User not found'], 401);
+                    }
+                    Auth::login($user);
+                } catch (\Exception $e) {
+                    return response()->json(['success' => false, 'error' => 'Invalid token'], 401);
+                }
+            }
+
+            // Kiểm tra user đã authenticate chưa
+            if (!Auth::check()) {
+                if (request()->wantsJson() || request()->header('Authorization')) {
+                    return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+                }
+                return redirect()->route('login');
+            }
+
             // Kiểm tra quyền truy cập
             if (Auth::user()->role !== 'admin') {
+                if (request()->wantsJson() || request()->header('Authorization')) {
+                    return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+                }
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
+
             $users = User::all();
+
+            // Nếu là API request (từ desktop app), trả về JSON
+            if (request()->wantsJson() || request()->header('Authorization')) {
+                return response()->json([
+                    'success' => true,
+                    'users' => $users
+                ]);
+            }
+
             return view('admin.users', compact('users'));
         } catch (\Exception $e) {
             Log::error('Error in AdminController@users: ' . $e->getMessage());
+            if (request()->wantsJson() || request()->header('Authorization')) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
         }
     }

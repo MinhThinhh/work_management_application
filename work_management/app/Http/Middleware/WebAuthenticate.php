@@ -28,18 +28,23 @@ class WebAuthenticate
         // Không xóa session để giữ CSRF token và các thông tin quan trọng khác
         // Session::flush(); // Bỏ comment này để tránh xóa CSRF token
 
-        // THAY ĐỔI: Kiểm tra cookie TRƯỚC, nếu không có cookie thì xóa session token
+        // THAY ĐỔI: Kiểm tra session TRƯỚC, sau đó mới kiểm tra cookie
+        $sessionToken = Session::get('jwt_token');
         $cookieToken = $request->cookie('jwt_token');
 
-        // Nếu không có cookie token, xóa token khỏi session và logout
-        if (!$cookieToken) {
-            \Log::info('No JWT cookie found, clearing session token and redirecting to login');
+        \Log::info('WebAuthenticate - URL: ' . $request->url());
+        \Log::info('WebAuthenticate - Session token exists: ' . ($sessionToken ? 'YES' : 'NO'));
+        \Log::info('WebAuthenticate - Cookie token exists: ' . ($cookieToken ? 'YES' : 'NO'));
+
+        // Ưu tiên session token trước, sau đó mới cookie token
+        $token = $sessionToken ?: $cookieToken;
+
+        // Nếu không có token nào, redirect về login
+        if (!$token) {
+            \Log::info('No JWT token found in session or cookie, redirecting to login');
             Session::forget('jwt_token');
             return redirect()->route('login')->with('info', 'Vui lòng đăng nhập để tiếp tục.');
         }
-
-        // Nếu có cookie, kiểm tra cookie trước
-        $token = $cookieToken;
         if ($token) {
             try {
                 JWTAuth::setToken($token);

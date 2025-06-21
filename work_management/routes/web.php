@@ -53,7 +53,7 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->group(function
     Route::delete('/api/calendar/events/{id}', [TaskController::class, 'destroy'])->name('calendar.events.destroy');
 });
 
-// Manager Routes - Chỉ quản lý công việc (require JWT authentication)
+// Manager Routes - Chỉ quản lý công việc (require authentication)
 Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('manager')->name('manager.')->group(function () {
     // Chuyển hướng dashboard đến tasks
     Route::get('/dashboard', function () {
@@ -73,7 +73,7 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('manage
     Route::put('/update-profile', [AuthController::class, 'updateProfile'])->name('update-profile');
 });
 
-// Admin Routes - Chỉ quản lý người dùng (require JWT authentication)
+// Admin Routes - Chỉ quản lý người dùng (require authentication)
 Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('admin')->name('admin.')->group(function () {
     // Chuyển hướng dashboard đến users
     Route::get('/dashboard', function () {
@@ -109,7 +109,7 @@ Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->prefix('admin'
 });
 
 // Public API Routes - session verify requires JWT authentication
-Route::get('/api/auth/session', [AuthController::class, 'me'])->middleware('jwt.verify')->name('session.verify');
+// Route::get('/api/auth/session', [AuthController::class, 'me'])->middleware(\App\Http\Middleware\WebAuthenticate::class)->name('session.verify');
 
 // Health check endpoint for desktop app
 Route::get('/health-check', function () {
@@ -149,3 +149,5 @@ Route::get('/force-logout', function (Request $request) {
         ->with('success', 'Đã đăng xuất hoàn toàn!')
         ->cookie($cookie);
 });
+
+

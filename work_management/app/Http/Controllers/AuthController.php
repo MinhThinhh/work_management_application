@@ -158,6 +158,9 @@ class AuthController extends Controller
 
                     Log::info('User role: ' . $user->role . ', redirectTo: ' . $redirectTo);
 
+                    // Lưu token vào session thay vì cookie để tránh vấn đề timing
+                    Session::put('jwt_token', $token);
+
                     // Tạo cookie với các thuộc tính bảo mật
                     $cookie = cookie(
                         'jwt_token',      // Tên cookie
@@ -165,7 +168,7 @@ class AuthController extends Controller
                         $minutes,         // Thời gian sống (phút)
                         '/',              // Path
                         null,             // Domain (null = domain hiện tại)
-                        true,             // Secure (chỉ gửi qua HTTPS)
+                        false,            // Secure (false cho HTTP local)
                         true,             // HttpOnly (không thể truy cập bằng JavaScript)
                         false,            // Raw
                         'Lax'             // SameSite (Lax cho phép gửi cookie khi chuyển hướng từ site khác)
@@ -300,7 +303,7 @@ class AuthController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'message' => 'Đăng xuất thành công'
-                ])->cookie(cookie('jwt_token', '', -1, '/', null, true, true, false, 'Lax'));
+                ])->cookie(cookie('jwt_token', '', -1, '/', null, false, true, false, 'Lax'));
             }
 
             // Tạo cookie hết hạn để xóa token
@@ -310,7 +313,7 @@ class AuthController extends Controller
                 -1,               // Thời gian âm để xóa cookie
                 '/',              // Path
                 null,             // Domain (null = domain hiện tại)
-                true,             // Secure (chỉ gửi qua HTTPS)
+                false,            // Secure (false cho HTTP local)
                 true,             // HttpOnly (không thể truy cập bằng JavaScript)
                 false,            // Raw
                 'Lax'             // SameSite
@@ -328,6 +331,34 @@ class AuthController extends Controller
             }
 
             return redirect('/login');
+        }
+    }
+
+    public function getToken(Request $request)
+    {
+        try {
+            $credentials = $request->only('email', 'password');
+
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Email hoặc mật khẩu không đúng'
+                ], 401);
+            }
+
+            $user = auth()->user();
+
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => $user
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Lỗi server: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -524,7 +555,7 @@ class AuthController extends Controller
                 $minutes,
                 '/',
                 null,
-                true,
+                false,
                 true,
                 false,
                 'Lax'
@@ -580,6 +611,160 @@ class AuthController extends Controller
             }
 
             return redirect()->back()->with('error', 'Cập nhật thông tin thất bại: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Desktop app - Cập nhật thông tin cá nhân
+     */
+    public function desktopUpdateProfile(Request $request)
+    {
+        try {
+            // Lấy token từ request
+            $token = $request->bearerToken();
+            if (!$token) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token is absent'
+                ]);
+            }
+
+            // Thiết lập token cho JWTAuth
+            JWTAuth::setToken($token);
+
+            // Xác thực token
+            try {
+                $user = JWTAuth::parseToken()->authenticate();
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'User not found'
+                    ]);
+                }
+
+                // Validate dữ liệu đầu vào
+                $validatedData = $request->validate([
+                    'name' => 'required|string|max:255',
+                    'phone' => 'nullable|string|max:20',
+                    'address' => 'nullable|string|max:255',
+                ]);
+
+                // Cập nhật thông tin người dùng
+                $user->name = $validatedData['name'];
+                $user->phone = $validatedData['phone'];
+                $user->address = $validatedData['address'];
+                $user->save();
+
+                Log::info('Desktop app - User profile updated', ['user_id' => $user->id]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cập nhật thông tin thành công',
+                    'user' => $user
+                ]);
+
+            } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token has expired',
+                    'tokenExpired' => true
+                ]);
+            } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token is invalid'
+                ]);
+            } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token error: ' . $e->getMessage()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Desktop app - Error updating profile: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Đã xảy ra lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Desktop app - Đổi mật khẩu
+     */
+    public function desktopChangePassword(Request $request)
+    {
+        try {
+            // Lấy token từ request
+            $token = $request->bearerToken();
+            if (!$token) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token is absent'
+                ]);
+            }
+
+            // Thiết lập token cho JWTAuth
+            JWTAuth::setToken($token);
+
+            // Xác thực token
+            try {
+                $user = JWTAuth::parseToken()->authenticate();
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'User not found'
+                    ]);
+                }
+
+                // Validate dữ liệu đầu vào
+                $validatedData = $request->validate([
+                    'current_password' => 'required|string',
+                    'new_password' => 'required|string|min:6|confirmed',
+                ]);
+
+                // Kiểm tra mật khẩu hiện tại
+                if (!Hash::check($validatedData['current_password'], $user->password)) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Mật khẩu hiện tại không đúng'
+                    ]);
+                }
+
+                // Cập nhật mật khẩu mới
+                $user->password = Hash::make($validatedData['new_password']);
+                $user->save();
+
+                Log::info('Desktop app - User password updated', ['user_id' => $user->id]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Đổi mật khẩu thành công'
+                ]);
+
+            } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token has expired',
+                    'tokenExpired' => true
+                ]);
+            } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token is invalid'
+                ]);
+            } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Token error: ' . $e->getMessage()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Desktop app - Error changing password: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Đã xảy ra lỗi: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

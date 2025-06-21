@@ -101,7 +101,7 @@ return [
     |
     */
 
-    'ttl' => env('JWT_TTL', 3), // Đặt thời gian sống cố định là 60 phút (1 giờ) - không sử dụng remember token
+    'ttl' => env('JWT_TTL', 15), // Đặt thời gian sống cố định là 60 phút (1 giờ) - không sử dụng remember token
 
     /*
     |--------------------------------------------------------------------------
@@ -131,7 +131,7 @@ return [
     |
     */
 
-    'algo' => env('JWT_ALGO', Tymon\JWTAuth\Providers\JWT\Provider::ALGO_HS256),
+    'algo' => env('JWT_ALGO', 'HS256'),
 
     /*
     |--------------------------------------------------------------------------

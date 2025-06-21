@@ -28,7 +28,7 @@ class RouteServiceProvider extends ServiceProvider
 
         $this->routes(function () {
             Route::middleware('api')
-                ->prefix('')  // Không thêm prefix
+                ->prefix('api')  // Thêm prefix /api
                 ->group(base_path('routes/api.php'));
 
             Route::middleware('web')

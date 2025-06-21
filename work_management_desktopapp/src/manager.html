@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Panel - Quản lý Công việc</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/manager.css?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="manager-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-user-tie"></i>
+                <span class="logo">Manager Panel</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="sidebar-link active" data-section="tasks">
+                    <i class="fas fa-tasks"></i>
+                    <span>Quản lý công việc</span>
+                </a>
+                <a href="#" class="sidebar-link" data-section="reports">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Báo cáo & Thống kê</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="content-header">
+                <h1 id="pageTitle">Quản lý công việc</h1>
+
+                <!-- Profile Dropdown -->
+                <div class="profile-dropdown">
+                    <button class="profile-button" id="profileButton">
+                        <div class="profile-avatar">
+                            <span id="userInitials">MG</span>
+                        </div>
+                    </button>
+                    <div class="profile-menu" id="profileMenu">
+                        <div class="profile-menu-item" id="profileInfo">
+                            <i class="fas fa-user"></i>
+                            <span>Thông tin cá nhân</span>
+                        </div>
+                        <div class="profile-menu-item" id="changePassword">
+                            <i class="fas fa-key"></i>
+                            <span>Đổi mật khẩu</span>
+                        </div>
+                        <div class="profile-menu-divider"></div>
+                        <div class="profile-menu-item" id="logoutBtnProfile">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Đăng xuất</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks Management Section -->
+            <div class="content-section" id="tasksSection">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Danh sách công việc</h3>
+                        <button class="btn btn-primary" id="addTaskBtn" onclick="openAddTaskModal()">
+                            Thêm công việc
+                        </button>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table" id="tasksTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Tiêu đề</th>
+                                        <th>Người được gán</th>
+                                        <th>Ngày bắt đầu</th>
+                                        <th>Ngày kết thúc</th>
+                                        <th>Trạng thái</th>
+                                        <th>Mức độ ưu tiên</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasksList">
+                                    <!-- Tasks will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div class="content-section hidden" id="reportsSection">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalTasks">0</h3>
+                            <p>Tổng công việc</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon pending">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="pendingTasks">0</h3>
+                            <p>Chờ xử lý</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon in-progress">
+                            <i class="fas fa-spinner"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="inProgressTasks">0</h3>
+                            <p>Đang thực hiện</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon completed">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="completedTasks">0</h3>
+                            <p>Hoàn thành</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Thống kê theo người dùng</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table" id="userStatsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Người dùng</th>
+                                        <th>Tổng công việc</th>
+                                        <th>Chờ xử lý</th>
+                                        <th>Đang thực hiện</th>
+                                        <th>Hoàn thành</th>
+                                        <th>Tỷ lệ hoàn thành</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userStatsList">
+                                    <!-- User stats will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Đang tải...</p>
+            </div>
+
+            <!-- Error Message -->
+            <div class="error-message" id="errorMessage" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="errorText">Đã xảy ra lỗi</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal" id="addTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Thêm công việc mới</h3>
+                <button class="modal-close" onclick="closeAddTaskModal()">&times;</button>
+            </div>
+            <form id="addTaskForm" onsubmit="handleAddTask(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="taskTitle">Tiêu đề *</label>
+                        <input type="text" id="taskTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDescription">Mô tả</label>
+                        <textarea id="taskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskUser">Gán cho người dùng *</label>
+                        <select id="taskUser" name="user_id" required>
+                            <option value="">Chọn người dùng...</option>
+                            <!-- Users will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskStartDate">Ngày bắt đầu *</label>
+                        <input type="date" id="taskStartDate" name="start_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDueDate">Ngày kết thúc *</label>
+                        <input type="date" id="taskDueDate" name="due_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskStatus">Trạng thái *</label>
+                        <select id="taskStatus" name="status" required>
+                            <option value="pending">Chờ xử lý</option>
+                            <option value="in_progress">Đang thực hiện</option>
+                            <option value="completed">Hoàn thành</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Mức độ ưu tiên *</label>
+                        <select id="taskPriority" name="priority" required>
+                            <option value="low">Thấp</option>
+                            <option value="medium">Trung bình</option>
+                            <option value="high">Cao</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddTaskModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Thêm công việc</button>
+                </div>
+            </form>
+            <div class="alert alert-error" id="addTaskError" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div class="modal" id="editTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Chỉnh sửa công việc</h3>
+                <button class="modal-close" onclick="closeEditTaskModal()">&times;</button>
+            </div>
+            <form id="editTaskForm" onsubmit="handleEditTask(event)">
+                <input type="hidden" id="editTaskId" name="taskId">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="editTaskTitle">Tiêu đề *</label>
+                        <input type="text" id="editTaskTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskDescription">Mô tả</label>
+                        <textarea id="editTaskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskUser">Gán cho người dùng *</label>
+                        <select id="editTaskUser" name="user_id" required>
+                            <option value="">Chọn người dùng...</option>
+                            <!-- Users will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskStartDate">Ngày bắt đầu *</label>
+                        <input type="date" id="editTaskStartDate" name="start_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskDueDate">Ngày kết thúc *</label>
+                        <input type="date" id="editTaskDueDate" name="due_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskStatus">Trạng thái *</label>
+                        <select id="editTaskStatus" name="status" required>
+                            <option value="pending">Chờ xử lý</option>
+                            <option value="in_progress">Đang thực hiện</option>
+                            <option value="completed">Hoàn thành</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskPriority">Mức độ ưu tiên *</label>
+                        <select id="editTaskPriority" name="priority" required>
+                            <option value="low">Thấp</option>
+                            <option value="medium">Trung bình</option>
+                            <option value="high">Cao</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditTaskModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật</button>
+                </div>
+            </form>
+            <div class="alert alert-error" id="editTaskError" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Profile Modal (same as admin.html) -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Thông tin cá nhân</h3>
+                <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+            </div>
+            <form id="profileForm" onsubmit="handleProfileSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="profileName">Họ và tên *</label>
+                        <input type="text" id="profileName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="profileEmail">Email</label>
+                        <input type="email" id="profileEmail" name="email" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="profilePhone">Số điện thoại</label>
+                        <input type="tel" id="profilePhone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileAddress">Địa chỉ</label>
+                        <input type="text" id="profileAddress" name="address">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeProfileModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật thông tin</button>
+                </div>
+            </form>
+            <div class="alert alert-success" id="profileSuccess" style="display: none;"></div>
+            <div class="alert alert-error" id="profileError" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Password Modal (same as admin.html) -->
+    <div class="modal" id="passwordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Đổi mật khẩu</h3>
+                <button class="modal-close" onclick="closePasswordModal()">&times;</button>
+            </div>
+            <form id="passwordForm" onsubmit="handlePasswordSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="currentPassword">Mật khẩu hiện tại *</label>
+                        <input type="password" id="currentPassword" name="current_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Mật khẩu mới *</label>
+                        <input type="password" id="newPassword" name="new_password" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Xác nhận mật khẩu mới *</label>
+                        <input type="password" id="confirmPassword" name="new_password_confirmation" required minlength="6">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Đổi mật khẩu</button>
+                </div>
+            </form>
+            <div class="alert alert-success" id="passwordSuccess" style="display: none;"></div>
+            <div class="alert alert-error" id="passwordError" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal" id="confirmDeleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Xác nhận xóa</h3>
+                <button class="modal-close" onclick="closeConfirmDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa công việc này không?</p>
+                <p class="text-danger">Hành động này không thể hoàn tác!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmDeleteModal()">Hủy</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteTask()">Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/manager.js"></script>
+</body>
+</html>

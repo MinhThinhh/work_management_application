@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class ManagerController extends Controller
 {
@@ -41,16 +42,54 @@ class ManagerController extends Controller
     public function users()
     {
         try {
+            // JWT Authentication cho desktop app (chỉ khi có Authorization header)
+            if (request()->header('Authorization') && !Auth::check()) {
+                $token = str_replace('Bearer ', '', request()->header('Authorization'));
+                try {
+                    JWTAuth::setToken($token);
+                    $user = JWTAuth::parseToken()->authenticate();
+                    if (!$user) {
+                        return response()->json(['success' => false, 'error' => 'User not found'], 401);
+                    }
+                    Auth::login($user);
+                } catch (\Exception $e) {
+                    return response()->json(['success' => false, 'error' => 'Invalid token'], 401);
+                }
+            }
+
+            // Kiểm tra user đã authenticate chưa
+            if (!Auth::check()) {
+                if (request()->wantsJson() || request()->header('Authorization')) {
+                    return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+                }
+                return redirect()->route('login');
+            }
+
             // Kiểm tra quyền truy cập
             if (Auth::user()->role !== 'manager' && Auth::user()->role !== 'admin') {
+                if (request()->wantsJson()) {
+                    return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+                }
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
 
             // Manager chỉ có thể xem danh sách user để gán task, không thể thêm/sửa/xóa
             $users = User::where('role', 'user')->get();
+
+            // Nếu là API request (từ desktop app), trả về JSON
+            if (request()->wantsJson() || request()->header('Authorization')) {
+                return response()->json([
+                    'success' => true,
+                    'users' => $users
+                ]);
+            }
+
             return redirect()->route('manager.dashboard');
         } catch (\Exception $e) {
             Log::error('Error in ManagerController@users: ' . $e->getMessage());
+            if (request()->wantsJson() || request()->header('Authorization')) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
         }
     }
@@ -61,14 +100,53 @@ class ManagerController extends Controller
     public function allTasks()
     {
         try {
+            // JWT Authentication cho desktop app (chỉ khi có Authorization header)
+            if (request()->header('Authorization') && !Auth::check()) {
+                $token = str_replace('Bearer ', '', request()->header('Authorization'));
+                try {
+                    JWTAuth::setToken($token);
+                    $user = JWTAuth::parseToken()->authenticate();
+                    if (!$user) {
+                        return response()->json(['success' => false, 'error' => 'User not found'], 401);
+                    }
+                    Auth::login($user);
+                } catch (\Exception $e) {
+                    return response()->json(['success' => false, 'error' => 'Invalid token'], 401);
+                }
+            }
+
+            // Kiểm tra user đã authenticate chưa
+            if (!Auth::check()) {
+                if (request()->wantsJson() || request()->header('Authorization')) {
+                    return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+                }
+                return redirect()->route('login');
+            }
+
             // Kiểm tra quyền truy cập
             if (Auth::user()->role !== 'manager' && Auth::user()->role !== 'admin') {
+                if (request()->wantsJson() || request()->header('Authorization')) {
+                    return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+                }
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
-            $tasks = Task::with('creator')->get();
+
+            $tasks = Task::with(['creator'])->get();
+
+            // Nếu là API request (từ desktop app), trả về JSON
+            if (request()->wantsJson() || request()->header('Authorization')) {
+                return response()->json([
+                    'success' => true,
+                    'tasks' => $tasks
+                ]);
+            }
+
             return view('manager.all-tasks', compact('tasks'));
         } catch (\Exception $e) {
             Log::error('Error in ManagerController@allTasks: ' . $e->getMessage());
+            if (request()->wantsJson() || request()->header('Authorization')) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());
         }
     }

@@ -14,6 +14,9 @@ Route::post('register', [AuthController::class, 'register']);
 
 // Desktop app endpoints
 Route::post('desktop-login', [AuthController::class, 'desktopLogin']);
+Route::post('get-token', [AuthController::class, 'getToken']);
+Route::put('desktop-update-profile', [AuthController::class, 'desktopUpdateProfile']);
+Route::post('desktop-change-password', [AuthController::class, 'desktopChangePassword']);
 
 // Desktop app add task endpoint
 Route::post('desktop-tasks', function (Request $request) {
@@ -492,7 +495,7 @@ Route::get('token-info', function () {
 });
 
 // Protected routes for all authenticated users
-Route::middleware('jwt.verify')->group(function () {
+Route::middleware(\App\Http\Middleware\JwtMiddleware::class)->group(function () {
     Route::get('tasks', [TaskController::class, 'index']);
     Route::post('tasks', [TaskController::class, 'store']);
     Route::get('tasks/{task}', [TaskController::class, 'show']);
@@ -723,17 +726,31 @@ Route::prefix('manager')->group(function () {
 });
 
 // API routes for admins only
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware(\App\Http\Middleware\JwtMiddleware::class)->group(function () {
     Route::get('users', function () {
-        $users = \App\Models\User::all();
-        return response()->json(['success' => true, 'users' => $users]);
+        // Check admin role
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'error' => 'Unauthorized. Admin access required.'], 403);
+        }
+
+        try {
+            $users = \App\Models\User::all();
+            return response()->json(['success' => true, 'users' => $users]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => 'Không thể tải danh sách người dùng: ' . $e->getMessage()], 500);
+        }
     });
 
     Route::post('users', function (Request $request) {
+        // Check admin role
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'error' => 'Unauthorized. Admin access required.'], 403);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
+            'password' => 'required|min:6|confirmed',
             'role' => 'required|in:admin,manager,user'
         ]);
 
@@ -748,15 +765,23 @@ Route::prefix('admin')->group(function () {
     });
 
     Route::put('users/{id}', function (Request $request, $id) {
+        // Check admin role
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'error' => 'Unauthorized. Admin access required.'], 403);
+        }
+
         $user = \App\Models\User::findOrFail($id);
 
         $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'role' => 'sometimes|in:admin,manager,user'
+            'name' => 'required|string|max:255',
+            'role' => 'required|in:admin,manager,user',
+            'password' => 'nullable|min:6|confirmed'
         ]);
 
-        if ($request->has('password') && !empty($request->password)) {
-            $data['password'] = bcrypt($request->password);
+        if (!empty($data['password'])) {
+            $data['password'] = bcrypt($data['password']);
+        } else {
+            unset($data['password']);
         }
 
         // Không cho phép cập nhật email vì lý do bảo mật
@@ -768,10 +793,20 @@ Route::prefix('admin')->group(function () {
     });
 
     Route::delete('users/{id}', function ($id) {
-        $user = \App\Models\User::findOrFail($id);
-        $user->delete();
+        // Check admin role
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'error' => 'Unauthorized. Admin access required.'], 403);
+        }
 
-        return response()->json(['success' => true, 'message' => 'User deleted successfully']);
+        $user = \App\Models\User::findOrFail($id);
+
+        // Prevent deleting yourself
+        if ($user->id === auth()->id()) {
+            return response()->json(['success' => false, 'error' => 'Không thể xóa chính mình'], 400);
+        }
+
+        $user->delete();
+        return response()->json(['success' => true, 'message' => 'Người dùng đã được xóa thành công']);
     });
 
     Route::get('reports', function () {
@@ -802,4 +837,116 @@ Route::prefix('admin')->group(function () {
             ]
         ]);
     });
+});
+
+// API routes for managers only
+Route::prefix('manager')->middleware(\App\Http\Middleware\JwtMiddleware::class)->group(function () {
+
+        Route::get('users', function () {
+            // Check manager or admin role
+            if (!auth()->user() || (auth()->user()->role !== 'manager' && auth()->user()->role !== 'admin')) {
+                return response()->json(['success' => false, 'error' => 'Unauthorized. Manager or admin access required.'], 403);
+            }
+
+            try {
+                // Manager chỉ cần xem danh sách user để gán task
+                $users = \App\Models\User::where('role', 'user')->get();
+                return response()->json(['success' => true, 'users' => $users]);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'error' => 'Không thể tải danh sách người dùng: ' . $e->getMessage()], 500);
+            }
+        });
+
+        Route::get('tasks', function () {
+            // Check manager or admin role
+            if (!auth()->user() || (auth()->user()->role !== 'manager' && auth()->user()->role !== 'admin')) {
+                return response()->json(['success' => false, 'error' => 'Unauthorized. Manager or admin access required.'], 403);
+            }
+
+            try {
+                // Manager có thể xem tất cả tasks
+                $tasks = \App\Models\Task::with(['creator', 'assignedUser'])->get();
+                return response()->json(['success' => true, 'tasks' => $tasks]);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'error' => 'Không thể tải danh sách công việc: ' . $e->getMessage()], 500);
+            }
+        });
+
+        Route::post('tasks', function (Request $request) {
+            // Check manager or admin role
+            if (!auth()->user() || (auth()->user()->role !== 'manager' && auth()->user()->role !== 'admin')) {
+                return response()->json(['success' => false, 'error' => 'Unauthorized. Manager or admin access required.'], 403);
+            }
+
+            $data = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'user_id' => 'required|exists:users,id',
+                'start_date' => 'required|date',
+                'due_date' => 'required|date',
+                'status' => 'required|in:pending,in_progress,completed',
+                'priority' => 'required|in:low,medium,high'
+            ]);
+
+            $task = new \App\Models\Task();
+            $task->title = $data['title'];
+            $task->description = $data['description'];
+            $task->start_date = $data['start_date'];
+            $task->due_date = $data['due_date'];
+            $task->status = $data['status'];
+            $task->priority = $data['priority'];
+            $task->creator_id = auth()->id();
+            $task->assigned_user_id = $data['user_id']; // Assign task to user
+            $task->save();
+
+            // Load relationships
+            $task->load(['creator', 'assignedUser']);
+
+            return response()->json(['success' => true, 'task' => $task, 'message' => 'Công việc đã được tạo thành công']);
+        });
+
+        Route::put('tasks/{id}', function (Request $request, $id) {
+            // Check manager or admin role
+            if (!auth()->user() || (auth()->user()->role !== 'manager' && auth()->user()->role !== 'admin')) {
+                return response()->json(['success' => false, 'error' => 'Unauthorized. Manager or admin access required.'], 403);
+            }
+
+            $task = \App\Models\Task::findOrFail($id);
+
+            $data = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'user_id' => 'required|exists:users,id',
+                'start_date' => 'required|date',
+                'due_date' => 'required|date',
+                'status' => 'required|in:pending,in_progress,completed',
+                'priority' => 'required|in:low,medium,high'
+            ]);
+
+            $task->title = $data['title'];
+            $task->description = $data['description'];
+            $task->start_date = $data['start_date'];
+            $task->due_date = $data['due_date'];
+            $task->status = $data['status'];
+            $task->priority = $data['priority'];
+            $task->assigned_user_id = $data['user_id']; // Update assigned user
+            $task->save();
+
+            // Load relationships
+            $task->load(['creator', 'assignedUser']);
+
+            return response()->json(['success' => true, 'task' => $task, 'message' => 'Công việc đã được cập nhật thành công']);
+        });
+
+        Route::delete('tasks/{id}', function ($id) {
+            // Check manager or admin role
+            if (!auth()->user() || (auth()->user()->role !== 'manager' && auth()->user()->role !== 'admin')) {
+                return response()->json(['success' => false, 'error' => 'Unauthorized. Manager or admin access required.'], 403);
+            }
+
+            $task = \App\Models\Task::findOrFail($id);
+            $task->delete();
+
+            return response()->json(['success' => true, 'message' => 'Công việc đã được xóa thành công']);
+        });
 });

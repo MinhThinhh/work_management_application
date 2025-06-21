@@ -54,17 +54,65 @@ class TaskManager {
         // Close modals when clicking outside
         window.addEventListener('click', this.handleWindowClick.bind(this));
 
-        // Logout button
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', this.handleLogout.bind(this));
+        // Profile modal event listeners
+        const closeProfileModal = document.getElementById('closeProfileModal');
+        if (closeProfileModal) {
+            closeProfileModal.addEventListener('click', this.closeProfileModal.bind(this));
         }
+
+        const profileForm = document.getElementById('profileForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', this.handleProfileSubmit.bind(this));
+        }
+
+        // Password modal event listeners
+        const closePasswordModal = document.getElementById('closePasswordModal');
+        if (closePasswordModal) {
+            closePasswordModal.addEventListener('click', this.closePasswordModal.bind(this));
+        }
+
+        const passwordForm = document.getElementById('passwordForm');
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', this.handlePasswordSubmit.bind(this));
+        }
+
+
 
         // Open modal button
         const openModalBtn = document.getElementById('openModalBtn');
         if (openModalBtn) {
             openModalBtn.addEventListener('click', this.handleOpenModal.bind(this));
         }
+
+        // Profile dropdown
+        const profileButton = document.getElementById('profileButton');
+        const profileMenu = document.getElementById('profileMenu');
+        if (profileButton && profileMenu) {
+            profileButton.addEventListener('click', this.toggleProfileMenu.bind(this));
+        }
+
+        // Profile menu items
+        const profileInfo = document.getElementById('profileInfo');
+        const changePassword = document.getElementById('changePassword');
+        const logoutBtnProfile = document.getElementById('logoutBtnProfile');
+
+        if (profileInfo) {
+            profileInfo.addEventListener('click', this.handleProfileInfo.bind(this));
+        }
+        if (changePassword) {
+            changePassword.addEventListener('click', this.handleChangePassword.bind(this));
+        }
+        if (logoutBtnProfile) {
+            logoutBtnProfile.addEventListener('click', this.handleLogout.bind(this));
+        }
+
+        // Close profile menu when clicking outside
+        document.addEventListener('click', (event) => {
+            const profileDropdown = document.querySelector('.profile-dropdown');
+            if (profileDropdown && !profileDropdown.contains(event.target)) {
+                this.closeProfileMenu();
+            }
+        });
     }
 
     async checkApiConnection() {
@@ -104,13 +152,27 @@ class TaskManager {
                 return;
             }
 
-            // Store current user info
-            this.currentUser = tokenInfo.payload;
+            // Get full user data
+            const userData = await window.api.getUserData();
+            if (userData.success) {
+                this.currentUser = userData.user;
 
-            // Display user email
-            const userEmail = document.getElementById('userEmail');
-            if (userEmail && tokenInfo.payload && tokenInfo.payload.sub) {
-                userEmail.textContent = tokenInfo.payload.sub;
+                // Check user role and redirect if necessary
+                if (this.currentUser.role === 'admin') {
+                    window.location.href = 'admin.html';
+                    return;
+                } else if (this.currentUser.role === 'manager') {
+                    window.location.href = 'manager.html';
+                    return;
+                }
+
+                // Display user initials in profile avatar
+                this.updateUserProfile();
+            } else {
+                console.error('Failed to get user data:', userData.error);
+                // Fallback to token payload
+                this.currentUser = tokenInfo.payload;
+                this.updateUserProfile();
             }
 
             // Load users if manager or admin
@@ -216,6 +278,13 @@ class TaskManager {
     }
 
     async loadTasks() {
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Show loading
+        if (loading) loading.style.display = 'flex';
+        if (errorMessage) errorMessage.style.display = 'none';
+
         try {
             const result = await window.api.getTasks();
 
@@ -228,10 +297,24 @@ class TaskManager {
                     window.location.href = 'login.html';
                     return;
                 }
+
+                // Show error message
+                if (errorMessage) {
+                    errorMessage.textContent = result.error || 'Không thể tải danh sách công việc';
+                    errorMessage.style.display = 'block';
+                }
                 console.error('Failed to load tasks:', result.error);
             }
         } catch (error) {
+            // Show error message
+            if (errorMessage) {
+                errorMessage.textContent = 'Đã xảy ra lỗi khi tải danh sách công việc';
+                errorMessage.style.display = 'block';
+            }
             console.error('Error loading tasks:', error);
+        } finally {
+            // Hide loading
+            if (loading) loading.style.display = 'none';
         }
     }
 
@@ -271,15 +354,24 @@ class TaskManager {
 
         row.innerHTML = `
             <td>${task.id}</td>
-            <td>${task.title}</td>
+            <td>
+                <div style="font-weight: 500;">${task.title}</div>
+                ${task.description ? `<div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">${task.description}</div>` : ''}
+            </td>
             <td>${startDate}</td>
             <td>${dueDate}</td>
-            <td><span class="status-badge ${statusClass}">${this.getStatusText(task.status)}</span></td>
-            <td><span class="status-badge ${priorityClass}">${this.getPriorityText(task.priority)}</span></td>
+            <td><span class="badge ${statusClass}">${this.getStatusText(task.status)}</span></td>
+            <td><span class="badge ${priorityClass}">${this.getPriorityText(task.priority)}</span></td>
             <td>
                 <div class="action-buttons">
-                    <button class="edit-btn" onclick="editTask(${task.id})">Sửa</button>
-                    <button class="delete-btn" onclick="deleteTask(${task.id})">Xóa</button>
+                    <button class="edit-btn" onclick="editTask(${task.id})">
+                        <i class="fas fa-edit"></i>
+                        Sửa
+                    </button>
+                    <button class="delete-btn" onclick="deleteTask(${task.id})">
+                        <i class="fas fa-trash"></i>
+                        Xóa
+                    </button>
                 </div>
             </td>
         `;
@@ -289,18 +381,18 @@ class TaskManager {
 
     getStatusClass(status) {
         const statusClasses = {
-            'pending': 'status-pending',
-            'in_progress': 'status-in-progress',
-            'completed': 'status-completed'
+            'pending': 'badge-pending',
+            'in_progress': 'badge-in-progress',
+            'completed': 'badge-completed'
         };
         return statusClasses[status] || '';
     }
 
     getPriorityClass(priority) {
         const priorityClasses = {
-            'low': 'priority-low',
-            'medium': 'priority-medium',
-            'high': 'priority-high'
+            'low': 'badge-low',
+            'medium': 'badge-medium',
+            'high': 'badge-high'
         };
         return priorityClasses[priority] || '';
     }
@@ -327,8 +419,14 @@ class TaskManager {
         event.preventDefault();
 
         const modalError = document.getElementById('modalError');
-        if (modalError) {
-            modalError.style.display = 'none';
+        const submitBtn = event.target.querySelector('.submit-btn');
+        const originalText = submitBtn.innerHTML;
+
+        // Hide error and show loading state
+        if (modalError) modalError.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Đang thêm...';
         }
 
         const formData = new FormData(event.target);
@@ -362,6 +460,12 @@ class TaskManager {
                 modalError.textContent = error.message || 'Đã xảy ra lỗi khi thêm công việc';
                 modalError.style.display = 'block';
             }
+        } finally {
+            // Reset button state
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
     }
 
@@ -369,8 +473,14 @@ class TaskManager {
         event.preventDefault();
 
         const editModalError = document.getElementById('editModalError');
-        if (editModalError) {
-            editModalError.style.display = 'none';
+        const submitBtn = event.target.querySelector('.submit-btn');
+        const originalText = submitBtn.innerHTML;
+
+        // Hide error and show loading state
+        if (editModalError) editModalError.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Đang cập nhật...';
         }
 
         const formData = new FormData(event.target);
@@ -405,6 +515,12 @@ class TaskManager {
             if (editModalError) {
                 editModalError.textContent = error.message || 'Đã xảy ra lỗi khi cập nhật công việc';
                 editModalError.style.display = 'block';
+            }
+        } finally {
+            // Reset button state
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         }
     }
@@ -460,6 +576,9 @@ class TaskManager {
     handleWindowClick(event) {
         const addModal = document.getElementById('addTaskModal');
         const editModal = document.getElementById('editTaskModal');
+        const profileModal = document.getElementById('profileModal');
+        const passwordModal = document.getElementById('passwordModal');
+        const profileMenu = document.getElementById('profileMenu');
 
         if (event.target === addModal) {
             this.closeAddModal();
@@ -468,9 +587,238 @@ class TaskManager {
         if (event.target === editModal) {
             this.closeEditModal();
         }
+
+        if (event.target === profileModal) {
+            this.closeProfileModal();
+        }
+
+        if (event.target === passwordModal) {
+            this.closePasswordModal();
+        }
+
+        if (profileMenu && !profileMenu.contains(event.target) && !event.target.closest('.profile-button')) {
+            this.closeProfileMenu();
+        }
+    }
+
+    updateUserProfile(userPayload) {
+        const userInitials = document.getElementById('userInitials');
+        if (userInitials && this.currentUser) {
+            // Use actual user name if available, otherwise use email
+            let displayName = this.currentUser.name || this.currentUser.email;
+
+            // Extract initials from name or email
+            let initials;
+            if (this.currentUser.name) {
+                // Get initials from full name
+                const nameParts = this.currentUser.name.trim().split(' ');
+                if (nameParts.length >= 2) {
+                    initials = nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0);
+                } else {
+                    initials = nameParts[0].substring(0, 2);
+                }
+            } else {
+                // Get initials from email
+                const emailName = this.currentUser.email.split('@')[0];
+                initials = emailName.substring(0, 2);
+            }
+
+            userInitials.textContent = initials.toUpperCase();
+        }
+    }
+
+    toggleProfileMenu(event) {
+        event.stopPropagation();
+        const profileMenu = document.getElementById('profileMenu');
+        if (profileMenu) {
+            profileMenu.classList.toggle('show');
+        }
+    }
+
+    handleProfileInfo() {
+        this.closeProfileMenu();
+        this.openProfileModal();
+    }
+
+    handleChangePassword() {
+        this.closeProfileMenu();
+        this.openPasswordModal();
+    }
+
+    openProfileModal() {
+        const modal = document.getElementById('profileModal');
+        if (modal && this.currentUser) {
+            // Fill form with current user data
+            document.getElementById('profileName').value = this.currentUser.name || '';
+            document.getElementById('profileEmail').value = this.currentUser.email || '';
+            document.getElementById('profilePhone').value = this.currentUser.phone || '';
+            document.getElementById('profileAddress').value = this.currentUser.address || '';
+
+            modal.style.display = 'block';
+        }
+    }
+
+    closeProfileModal() {
+        const modal = document.getElementById('profileModal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.clearProfileMessages();
+        }
+    }
+
+    openPasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        if (modal) {
+            // Clear form
+            document.getElementById('passwordForm').reset();
+            modal.style.display = 'block';
+        }
+    }
+
+    closePasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.clearPasswordMessages();
+        }
+    }
+
+    clearProfileMessages() {
+        const errorDiv = document.getElementById('profileError');
+        const successDiv = document.getElementById('profileSuccess');
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (successDiv) successDiv.style.display = 'none';
+    }
+
+    clearPasswordMessages() {
+        const errorDiv = document.getElementById('passwordError');
+        const successDiv = document.getElementById('passwordSuccess');
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (successDiv) successDiv.style.display = 'none';
+    }
+
+    async handleProfileSubmit(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const profileData = {
+            name: formData.get('name'),
+            phone: formData.get('phone'),
+            address: formData.get('address')
+        };
+
+        try {
+            this.clearProfileMessages();
+
+            const result = await window.api.updateProfile(profileData);
+
+            if (result.success) {
+                // Update current user data
+                this.currentUser = { ...this.currentUser, ...result.user };
+
+                // Update profile avatar initials
+                this.updateUserProfile();
+
+                // Show success message
+                const successDiv = document.getElementById('profileSuccess');
+                if (successDiv) {
+                    successDiv.textContent = result.message || 'Cập nhật thông tin thành công!';
+                    successDiv.style.display = 'block';
+                }
+
+                // Close modal after 1 second
+                setTimeout(() => {
+                    this.closeProfileModal();
+                }, 1000);
+            } else {
+                // Check if token expired
+                if (result.tokenExpired) {
+                    await window.api.logout();
+                    window.location.href = 'login.html';
+                    return;
+                }
+                throw new Error(result.error || 'Có lỗi xảy ra khi cập nhật thông tin');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            const errorDiv = document.getElementById('profileError');
+            if (errorDiv) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+    }
+
+    async handlePasswordSubmit(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const passwordData = {
+            current_password: formData.get('current_password'),
+            new_password: formData.get('new_password'),
+            new_password_confirmation: formData.get('new_password_confirmation')
+        };
+
+        // Validate password confirmation
+        if (passwordData.new_password !== passwordData.new_password_confirmation) {
+            const errorDiv = document.getElementById('passwordError');
+            if (errorDiv) {
+                errorDiv.textContent = 'Mật khẩu mới và xác nhận mật khẩu không khớp';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+
+        try {
+            this.clearPasswordMessages();
+
+            const result = await window.api.changePassword(passwordData);
+
+            if (result.success) {
+                // Show success message
+                const successDiv = document.getElementById('passwordSuccess');
+                if (successDiv) {
+                    successDiv.textContent = result.message || 'Đổi mật khẩu thành công!';
+                    successDiv.style.display = 'block';
+                }
+
+                // Clear form
+                form.reset();
+
+                // Close modal after 1 second
+                setTimeout(() => {
+                    this.closePasswordModal();
+                }, 1000);
+            } else {
+                // Check if token expired
+                if (result.tokenExpired) {
+                    await window.api.logout();
+                    window.location.href = 'login.html';
+                    return;
+                }
+                throw new Error(result.error || 'Có lỗi xảy ra khi đổi mật khẩu');
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            const errorDiv = document.getElementById('passwordError');
+            if (errorDiv) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+    }
+
+    closeProfileMenu() {
+        const profileMenu = document.getElementById('profileMenu');
+        if (profileMenu) {
+            profileMenu.classList.remove('show');
+        }
     }
 
     async handleLogout() {
+        this.closeProfileMenu();
         try {
             await window.api.logout();
             window.location.href = 'login.html';

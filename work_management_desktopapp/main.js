@@ -8,14 +8,14 @@ const Store = require('electron-store');
 const store = new Store();
 
 // Define constants
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000/api';
 const SERVICE_NAME = 'work-management-app';
 
 // Check API connection
 async function checkApiConnection() {
   try {
     console.log('Checking API connection to:', API_BASE_URL);
-    const response = await axios.get(`${API_BASE_URL}/health-check`, { timeout: 5000 });
+    const response = await axios.get(`http://127.0.0.1:8000/health-check`, { timeout: 5000 });
     console.log('API connection successful:', response.data);
     return true;
   } catch (error) {
@@ -104,11 +104,7 @@ ipcMain.handle('login', async (_, { email, password }) => {
       await keytar.setPassword(SERVICE_NAME, email, response.data.token);
 
       // Save user info to store
-      store.set('user', {
-        email: email,
-        id: response.data.user.id,
-        role: response.data.user.role
-      });
+      store.set('user', response.data.user);
 
       return { success: true, user: response.data.user };
     } else {
@@ -169,7 +165,58 @@ ipcMain.handle('check-token', async () => {
   }
 });
 
-// Get tasks list
+
+
+
+
+// Get users list (for managers and admins)
+ipcMain.handle('get-users', async () => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    console.log('Fetching users with token:', token.substring(0, 10) + '...');
+
+    let endpoint;
+    if (user.role === 'admin') {
+      endpoint = `${API_BASE_URL}/admin/users`;
+    } else {
+      endpoint = `${API_BASE_URL}/manager/users`;
+    }
+
+    console.log('Final endpoint for users:', endpoint);
+
+    const response = await axios.get(endpoint, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('Users response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Get users error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not fetch users'
+    };
+  }
+});
+
+// Get tasks list (for all roles)
 ipcMain.handle('get-tasks', async () => {
   const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
   if (!token) {
@@ -186,13 +233,18 @@ ipcMain.handle('get-tasks', async () => {
     console.log('User role:', user.role);
 
     let endpoint;
-    if (user.role === 'manager' || user.role === 'admin') {
-      // Manager và admin sử dụng endpoint để lấy tất cả tasks (không có prefix api)
-      endpoint = `${API_BASE_URL.replace('/api', '')}/manager/tasks/all`;
+    if (user.role === 'admin') {
+      // Admin xem tất cả tasks qua API thường
+      endpoint = `${API_BASE_URL}/tasks`;
+    } else if (user.role === 'manager') {
+      // Manager xem tất cả tasks qua manager API endpoint
+      endpoint = `${API_BASE_URL}/manager/tasks`;
     } else {
-      // User sử dụng endpoint desktop-tasks
+      // User chỉ xem tasks của mình
       endpoint = `${API_BASE_URL}/desktop-tasks`;
     }
+
+    console.log('Final endpoint for tasks:', endpoint);
 
     const response = await axios.get(endpoint, {
       headers: {
@@ -217,7 +269,209 @@ ipcMain.handle('get-tasks', async () => {
   }
 });
 
-// Add new task
+// Get user data
+ipcMain.handle('get-user-data', async () => {
+  const user = store.get('user');
+  if (!user) {
+    return { success: false, error: 'User data not found' };
+  }
+  return { success: true, user: user };
+});
+
+// Update profile
+ipcMain.handle('update-profile', async (_, profileData) => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  try {
+    console.log('Updating profile with token:', token.substring(0, 10) + '...');
+    console.log('Profile data:', profileData);
+
+    const response = await axios.put(`${API_BASE_URL}/desktop-update-profile`, profileData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Update profile response:', response.data);
+
+    // Update local user data if successful
+    if (response.data.success && response.data.user) {
+      store.set('user', response.data.user);
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Update profile error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not update profile'
+    };
+  }
+});
+
+// Change password
+ipcMain.handle('change-password', async (_, passwordData) => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  try {
+    console.log('Changing password with token:', token.substring(0, 10) + '...');
+
+    const response = await axios.post(`${API_BASE_URL}/desktop-change-password`, passwordData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Change password response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Change password error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not change password'
+    };
+  }
+});
+
+// Add user (Admin only)
+ipcMain.handle('add-user', async (_, userData) => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized. Admin access required.' };
+  }
+
+  try {
+    console.log('Adding user with token:', token.substring(0, 10) + '...');
+    console.log('User data:', userData);
+
+    const response = await axios.post(`${API_BASE_URL}/admin/users`, userData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Add user response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Add user error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not add user'
+    };
+  }
+});
+
+// Update user (Admin only)
+ipcMain.handle('update-user', async (_, userId, userData) => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized. Admin access required.' };
+  }
+
+  try {
+    console.log('Updating user', userId, 'with token:', token.substring(0, 10) + '...');
+    console.log('User data:', userData);
+
+    const response = await axios.put(`${API_BASE_URL}/admin/users/${userId}`, userData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Update user response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Update user error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not update user'
+    };
+  }
+});
+
+// Delete user (Admin only)
+ipcMain.handle('delete-user', async (_, userId) => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized. Admin access required.' };
+  }
+
+  try {
+    console.log('Deleting user', userId, 'with token:', token.substring(0, 10) + '...');
+
+    const response = await axios.delete(`${API_BASE_URL}/admin/users/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('Delete user response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Delete user error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not delete user'
+    };
+  }
+});
+
+// Add task (All authenticated users)
 ipcMain.handle('add-task', async (_, taskData) => {
   const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
   if (!token) {
@@ -226,32 +480,25 @@ ipcMain.handle('add-task', async (_, taskData) => {
 
   const user = store.get('user');
   if (!user) {
-    return { success: false, error: 'User info not found' };
+    return { success: false, error: 'User not found' };
   }
 
   try {
     console.log('Adding task with token:', token.substring(0, 10) + '...');
     console.log('Task data:', taskData);
-    console.log('User role:', user.role);
 
+    // Use different endpoints based on user role
     let endpoint;
-    let requestData = taskData;
-
     if (user.role === 'manager' || user.role === 'admin') {
-      // Manager và admin tạo task cho user khác, cần user_id (không có prefix api)
-      endpoint = `${API_BASE_URL.replace('/api', '')}/manager/tasks`;
-      // Thêm user_id vào data nếu chưa có (mặc định là user hiện tại)
-      if (!requestData.user_id) {
-        requestData.user_id = user.id;
-      }
+      endpoint = `${API_BASE_URL}/manager/tasks`;
     } else {
-      // User tạo task cho chính mình
       endpoint = `${API_BASE_URL}/desktop-tasks`;
     }
 
-    const response = await axios.post(endpoint, requestData, {
+    const response = await axios.post(endpoint, taskData, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
     });
 
@@ -272,7 +519,7 @@ ipcMain.handle('add-task', async (_, taskData) => {
   }
 });
 
-// Update task
+// Update task (Manager only)
 ipcMain.handle('update-task', async (_, taskId, taskData) => {
   const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
   if (!token) {
@@ -280,33 +527,18 @@ ipcMain.handle('update-task', async (_, taskId, taskData) => {
   }
 
   const user = store.get('user');
-  if (!user) {
-    return { success: false, error: 'User info not found' };
+  if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
+    return { success: false, error: 'Unauthorized. Manager or admin access required.' };
   }
 
   try {
     console.log('Updating task', taskId, 'with token:', token.substring(0, 10) + '...');
     console.log('Task data:', taskData);
-    console.log('User role:', user.role);
 
-    let endpoint;
-    let requestData = taskData;
-
-    if (user.role === 'manager' || user.role === 'admin') {
-      // Manager và admin sử dụng endpoint manager (không có prefix api)
-      endpoint = `${API_BASE_URL.replace('/api', '')}/manager/tasks/${taskId}`;
-      // Thêm user_id vào data nếu chưa có (mặc định là user hiện tại)
-      if (!requestData.user_id) {
-        requestData.user_id = user.id;
-      }
-    } else {
-      // User sử dụng endpoint desktop-tasks
-      endpoint = `${API_BASE_URL}/desktop-tasks/${taskId}`;
-    }
-
-    const response = await axios.put(endpoint, requestData, {
+    const response = await axios.put(`${API_BASE_URL}/manager/tasks/${taskId}`, taskData, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
     });
 
@@ -327,7 +559,45 @@ ipcMain.handle('update-task', async (_, taskId, taskData) => {
   }
 });
 
-// Delete task
+// Get users (Manager only)
+ipcMain.handle('get-users', async () => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
+    return { success: false, error: 'Unauthorized. Manager or admin access required.' };
+  }
+
+  try {
+    console.log('Getting users with token:', token.substring(0, 10) + '...');
+
+    const response = await axios.get(`${API_BASE_URL}/manager/users`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('Get users response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Get users error:', error);
+
+    // Check if token expired
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not get users'
+    };
+  }
+});
+
+// Delete task (Manager only)
 ipcMain.handle('delete-task', async (_, taskId) => {
   const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
   if (!token) {
@@ -335,24 +605,14 @@ ipcMain.handle('delete-task', async (_, taskId) => {
   }
 
   const user = store.get('user');
-  if (!user) {
-    return { success: false, error: 'User info not found' };
+  if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
+    return { success: false, error: 'Unauthorized. Manager or admin access required.' };
   }
 
   try {
     console.log('Deleting task', taskId, 'with token:', token.substring(0, 10) + '...');
-    console.log('User role:', user.role);
 
-    let endpoint;
-    if (user.role === 'manager' || user.role === 'admin') {
-      // Manager và admin sử dụng endpoint manager (không có prefix api)
-      endpoint = `${API_BASE_URL.replace('/api', '')}/manager/tasks/${taskId}`;
-    } else {
-      // User sử dụng endpoint desktop-tasks
-      endpoint = `${API_BASE_URL}/desktop-tasks/${taskId}`;
-    }
-
-    const response = await axios.delete(endpoint, {
+    const response = await axios.delete(`${API_BASE_URL}/manager/tasks/${taskId}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -371,44 +631,6 @@ ipcMain.handle('delete-task', async (_, taskId) => {
     return {
       success: false,
       error: error.response?.data?.error || error.message || 'Could not delete task'
-    };
-  }
-});
-
-// Get users list (for managers)
-ipcMain.handle('get-users', async () => {
-  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
-  if (!token) {
-    return { success: false, error: 'Token not found' };
-  }
-
-  const user = store.get('user');
-  if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
-    return { success: false, error: 'Unauthorized' };
-  }
-
-  try {
-    console.log('Fetching users with token:', token.substring(0, 10) + '...');
-
-    const response = await axios.get(`${API_BASE_URL.replace('/api', '')}/manager/users`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    console.log('Users response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Get users error:', error);
-
-    // Check if token expired
-    if (error.response && error.response.status === 401) {
-      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
-    }
-
-    return {
-      success: false,
-      error: error.response?.data?.error || error.message || 'Could not fetch users'
     };
   }
 });

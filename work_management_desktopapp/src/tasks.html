@@ -3,47 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Danh sách công việc - Ứng dụng Quản lý Công việc</title>
+  <title>Quản lý Công việc - Work Management</title>
   <link rel="stylesheet" href="css/tasks.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Quản lý Công việc</h1>
-      <div class="user-info">
-        <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
+  <div class="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-tasks"></i>
+        <span class="logo">Work Management</span>
       </div>
-    </header>
+      <nav>
+        <a href="#" class="sidebar-link active">
+          <i class="fas fa-list-check"></i>
+          <span>Công việc của tôi</span>
+        </a>
+      </nav>
+    </div>
 
-    <button class="add-task-btn" id="openModalBtn">Thêm công việc mới</button>
+    <!-- Main Content -->
+    <div class="content">
+      <!-- Header -->
+      <div class="header">
+        <div class="tasks-header">
+          <h1>
+            <i class="fas fa-list-check" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+            Quản lý Công việc
+          </h1>
 
-    <div class="card">
-      <div id="loading" class="loading">
-        <div class="spinner"></div>
-        <p>Đang tải dữ liệu...</p>
+          <!-- Profile Dropdown -->
+          <div class="profile-dropdown">
+            <button class="profile-button" id="profileButton">
+              <div class="profile-avatar">
+                <span id="userInitials">VO</span>
+              </div>
+            </button>
+
+            <div class="profile-menu" id="profileMenu">
+              <div class="profile-menu-item" id="profileInfo">
+                <i class="fas fa-user"></i>
+                <span>Thông tin cá nhân</span>
+              </div>
+              <div class="profile-menu-item" id="changePassword">
+                <i class="fas fa-key"></i>
+                <span>Đổi mật khẩu</span>
+              </div>
+              <div class="profile-menu-divider"></div>
+              <div class="profile-menu-item" id="logoutBtnProfile">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Đăng xuất</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div id="errorMessage" class="error-message"></div>
+      <!-- Tasks Content -->
+      <div class="tasks-container">
+        <!-- Add Task Button -->
+        <div class="tasks-actions">
+          <button class="add-task-btn" id="openModalBtn">
+            <i class="fas fa-plus"></i>
+            Thêm công việc mới
+          </button>
+        </div>
 
-      <div id="tasksContainer">
-        <table id="tasksTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tiêu đề</th>
-              <th>Ngày bắt đầu</th>
-              <th>Ngày kết thúc</th>
-              <th>Trạng thái</th>
-              <th>Mức độ ưu tiên</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="tasksList">
-            <!-- ... -->
-          </tbody>
-        </table>
-        <div id="noTasks" class="no-tasks" style="display: none;">
-          <p>Không có công việc nào. Hãy thêm công việc mới!</p>
+        <div id="loading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+
+        <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+
+        <div class="card">
+          <div id="tasksContainer">
+            <div class="tasks-table-container">
+              <table class="tasks-table" id="tasksTable">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Tiêu đề</th>
+                    <th>Ngày bắt đầu</th>
+                    <th>Ngày kết thúc</th>
+                    <th>Trạng thái</th>
+                    <th>Mức độ ưu tiên</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="tasksList">
+                  <!-- Tasks will be loaded here -->
+                </tbody>
+              </table>
+            </div>
+            <div id="noTasks" class="no-tasks" style="display: none;">
+              <i class="fas fa-clipboard-list"></i>
+              <h3>Chưa có công việc nào</h3>
+              <p>Hãy thêm công việc mới để bắt đầu!</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -52,113 +111,299 @@
   <!-- Modal thêm công việc -->
   <div id="addTaskModal" class="modal">
     <div class="modal-content">
-      <span class="close" id="closeModal">&times;</span>
-      <h2>Thêm công việc mới</h2>
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-plus" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+          Thêm công việc mới
+        </h2>
+        <button class="close" id="closeModal">&times;</button>
+      </div>
+
       <form id="addTaskForm">
         <div class="form-group">
-          <label for="title">Tiêu đề</label>
-          <input type="text" id="title" name="title" required>
+          <label for="title">
+            <i class="fas fa-heading" style="margin-right: 0.5rem;"></i>
+            Tiêu đề
+          </label>
+          <input type="text" id="title" name="title" placeholder="Nhập tiêu đề công việc" required>
         </div>
+
         <div class="form-group">
-          <label for="description">Mô tả</label>
-          <textarea id="description" name="description"></textarea>
+          <label for="description">
+            <i class="fas fa-align-left" style="margin-right: 0.5rem;"></i>
+            Mô tả
+          </label>
+          <textarea id="description" name="description" placeholder="Nhập mô tả chi tiết công việc"></textarea>
         </div>
+
         <div class="form-group">
-          <label for="startDate">Ngày bắt đầu</label>
+          <label for="startDate">
+            <i class="fas fa-calendar-alt" style="margin-right: 0.5rem;"></i>
+            Ngày bắt đầu
+          </label>
           <input type="date" id="startDate" name="start_date" required>
         </div>
+
         <div class="form-group">
-          <label for="dueDate">Ngày kết thúc</label>
+          <label for="dueDate">
+            <i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i>
+            Ngày kết thúc
+          </label>
           <input type="date" id="dueDate" name="due_date" required>
         </div>
+
         <div class="form-group">
-          <label for="priority">Mức độ ưu tiên</label>
+          <label for="priority">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            Mức độ ưu tiên
+          </label>
           <select id="priority" name="priority" required>
             <option value="low">Thấp</option>
             <option value="medium" selected>Trung bình</option>
             <option value="high">Cao</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label for="status">Trạng thái</label>
+          <label for="status">
+            <i class="fas fa-tasks" style="margin-right: 0.5rem;"></i>
+            Trạng thái
+          </label>
           <select id="status" name="status" required>
             <option value="pending" selected>Chờ xử lý</option>
             <option value="in_progress">Đang thực hiện</option>
             <option value="completed">Hoàn thành</option>
           </select>
         </div>
+
         <div class="form-group" id="userSelectGroup" style="display: none;">
-          <label for="userId">Giao cho người dùng</label>
+          <label for="userId">
+            <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
+            Giao cho người dùng
+          </label>
           <select id="userId" name="user_id">
             <option value="">Chọn người dùng...</option>
           </select>
         </div>
-        <button type="submit" class="submit-btn">Thêm công việc</button>
+
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+          Thêm công việc
+        </button>
       </form>
-      <div id="modalError" class="error-message"></div>
+
+      <div id="modalError" class="alert alert-error" style="display: none;"></div>
     </div>
   </div>
 
   <!-- Modal sửa công việc -->
   <div id="editTaskModal" class="modal">
     <div class="modal-content">
-      <span class="close" id="closeEditModal">&times;</span>
-      <h2>Sửa công việc</h2>
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-edit" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+          Sửa công việc
+        </h2>
+        <button class="close" id="closeEditModal">&times;</button>
+      </div>
+
       <form id="editTaskForm">
         <input type="hidden" id="editTaskId" name="taskId">
+
         <div class="form-group">
-          <label for="editTitle">Tiêu đề</label>
-          <input type="text" id="editTitle" name="title" required>
+          <label for="editTitle">
+            <i class="fas fa-heading" style="margin-right: 0.5rem;"></i>
+            Tiêu đề
+          </label>
+          <input type="text" id="editTitle" name="title" placeholder="Nhập tiêu đề công việc" required>
         </div>
+
         <div class="form-group">
-          <label for="editDescription">Mô tả</label>
-          <textarea id="editDescription" name="description"></textarea>
+          <label for="editDescription">
+            <i class="fas fa-align-left" style="margin-right: 0.5rem;"></i>
+            Mô tả
+          </label>
+          <textarea id="editDescription" name="description" placeholder="Nhập mô tả chi tiết công việc"></textarea>
         </div>
+
         <div class="form-group">
-          <label for="editStartDate">Ngày bắt đầu</label>
+          <label for="editStartDate">
+            <i class="fas fa-calendar-alt" style="margin-right: 0.5rem;"></i>
+            Ngày bắt đầu
+          </label>
           <input type="date" id="editStartDate" name="start_date" required>
         </div>
+
         <div class="form-group">
-          <label for="editDueDate">Ngày kết thúc</label>
+          <label for="editDueDate">
+            <i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i>
+            Ngày kết thúc
+          </label>
           <input type="date" id="editDueDate" name="due_date" required>
         </div>
+
         <div class="form-group">
-          <label for="editPriority">Mức độ ưu tiên</label>
+          <label for="editPriority">
+            <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+            Mức độ ưu tiên
+          </label>
           <select id="editPriority" name="priority" required>
             <option value="low">Thấp</option>
             <option value="medium">Trung bình</option>
             <option value="high">Cao</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label for="editStatus">Trạng thái</label>
+          <label for="editStatus">
+            <i class="fas fa-tasks" style="margin-right: 0.5rem;"></i>
+            Trạng thái
+          </label>
           <select id="editStatus" name="status" required>
             <option value="pending">Chờ xử lý</option>
             <option value="in_progress">Đang thực hiện</option>
             <option value="completed">Hoàn thành</option>
           </select>
         </div>
+
         <div class="form-group" id="editUserSelectGroup" style="display: none;">
-          <label for="editUserId">Giao cho người dùng</label>
+          <label for="editUserId">
+            <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
+            Giao cho người dùng
+          </label>
           <select id="editUserId" name="user_id">
             <option value="">Chọn người dùng...</option>
           </select>
         </div>
-        <button type="submit" class="submit-btn">Cập nhật công việc</button>
+
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+          Cập nhật công việc
+        </button>
       </form>
-      <div id="editModalError" class="error-message"></div>
+
+      <div id="editModalError" class="alert alert-error" style="display: none;"></div>
     </div>
   </div>
 
   <!-- Dialog xác nhận xóa -->
   <div id="confirmDialog" class="confirm-dialog">
     <div class="confirm-content">
+      <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--warning-color); margin-bottom: 1rem;"></i>
       <h3>Xác nhận xóa</h3>
-      <p>Bạn có chắc chắn muốn xóa công việc này không?</p>
+      <p>Bạn có chắc chắn muốn xóa công việc này không? Hành động này không thể hoàn tác.</p>
       <div class="confirm-buttons">
-        <button id="confirmYes" class="confirm-yes">Xóa</button>
-        <button id="confirmNo" class="confirm-no">Hủy</button>
+        <button id="confirmYes" class="confirm-yes">
+          <i class="fas fa-trash" style="margin-right: 0.5rem;"></i>
+          Xóa
+        </button>
+        <button id="confirmNo" class="confirm-no">
+          <i class="fas fa-times" style="margin-right: 0.5rem;"></i>
+          Hủy
+        </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal thông tin cá nhân -->
+  <div id="profileModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-user" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+          Thông tin cá nhân
+        </h2>
+        <button class="close" id="closeProfileModal">&times;</button>
+      </div>
+
+      <form id="profileForm">
+        <div class="form-group">
+          <label for="profileName">
+            <i class="fas fa-user" style="margin-right: 0.5rem;"></i>
+            Họ và tên
+          </label>
+          <input type="text" id="profileName" name="name" placeholder="Nhập họ và tên" required>
+        </div>
+
+        <div class="form-group">
+          <label for="profileEmail">
+            <i class="fas fa-envelope" style="margin-right: 0.5rem;"></i>
+            Email
+          </label>
+          <input type="email" id="profileEmail" name="email" placeholder="Nhập email" readonly>
+        </div>
+
+        <div class="form-group">
+          <label for="profilePhone">
+            <i class="fas fa-phone" style="margin-right: 0.5rem;"></i>
+            Số điện thoại
+          </label>
+          <input type="tel" id="profilePhone" name="phone" placeholder="Nhập số điện thoại">
+        </div>
+
+        <div class="form-group">
+          <label for="profileAddress">
+            <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>
+            Địa chỉ
+          </label>
+          <textarea id="profileAddress" name="address" placeholder="Nhập địa chỉ"></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+          Cập nhật thông tin
+        </button>
+      </form>
+
+      <div id="profileError" class="alert alert-error" style="display: none;"></div>
+      <div id="profileSuccess" class="alert alert-success" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Modal đổi mật khẩu -->
+  <div id="passwordModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-key" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+          Đổi mật khẩu
+        </h2>
+        <button class="close" id="closePasswordModal">&times;</button>
+      </div>
+
+      <form id="passwordForm">
+        <div class="form-group">
+          <label for="currentPassword">
+            <i class="fas fa-lock" style="margin-right: 0.5rem;"></i>
+            Mật khẩu hiện tại
+          </label>
+          <input type="password" id="currentPassword" name="current_password" placeholder="Nhập mật khẩu hiện tại" required>
+        </div>
+
+        <div class="form-group">
+          <label for="newPassword">
+            <i class="fas fa-key" style="margin-right: 0.5rem;"></i>
+            Mật khẩu mới
+          </label>
+          <input type="password" id="newPassword" name="new_password" placeholder="Nhập mật khẩu mới" required>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">
+            <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>
+            Xác nhận mật khẩu mới
+          </label>
+          <input type="password" id="confirmPassword" name="new_password_confirmation" placeholder="Nhập lại mật khẩu mới" required>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+          Đổi mật khẩu
+        </button>
+      </form>
+
+      <div id="passwordError" class="alert alert-error" style="display: none;"></div>
+      <div id="passwordSuccess" class="alert alert-success" style="display: none;"></div>
     </div>
   </div>
 

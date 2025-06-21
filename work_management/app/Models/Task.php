@@ -10,7 +10,7 @@ class Task extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'description', 'start_date', 'due_date', 'status', 'priority', 'creator_id'];
+    protected $fillable = ['title', 'description', 'start_date', 'due_date', 'status', 'priority', 'creator_id', 'assigned_user_id'];
 
     /**
      * Get the user that created the task.
@@ -18,6 +18,14 @@ class Task extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    /**
+     * Get the user that is assigned to the task.
+     */
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     /**

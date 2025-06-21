@@ -3,24 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng nhập - Ứng dụng Quản lý Công việc</title>
+  <title>Đăng nhập - Work Management</title>
   <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
   <div class="container">
-    <h1>Đăng nhập</h1>
+    <div class="logo-section">
+      <i class="fas fa-tasks" style="font-size: 2rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+      <h1>Work Management</h1>
+      <p style="text-align: center; color: #6b7280; margin-bottom: 2rem;">Đăng nhập vào tài khoản của bạn</p>
+    </div>
+
     <form id="loginForm">
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required>
+        <label for="email">
+          <i class="fas fa-envelope" style="margin-right: 0.5rem;"></i>
+          Email
+        </label>
+        <input type="email" id="email" name="email" placeholder="Nhập email của bạn" required>
       </div>
       <div class="form-group">
-        <label for="password">Mật khẩu</label>
-        <input type="password" id="password" name="password" required>
+        <label for="password">
+          <i class="fas fa-lock" style="margin-right: 0.5rem;"></i>
+          Mật khẩu
+        </label>
+        <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
       </div>
-      <button type="submit">Đăng nhập</button>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Đang đăng nhập...</p>
+      </div>
+
+      <button type="submit" id="loginButton">
+        <i class="fas fa-sign-in-alt" style="margin-right: 0.5rem;"></i>
+        Đăng nhập
+      </button>
     </form>
+
     <div id="error" class="error-message"></div>
+    <div id="success" class="success-message"></div>
   </div>
 
   <script src="js/login.js"></script>
