@@ -164,8 +164,8 @@ class AdminManager {
             loading.style.display = 'flex';
             errorMessage.style.display = 'none';
 
-            const result = await window.api.getUsers();
-            
+            const result = await window.api.getUsersWithTeams();
+
             if (result.success) {
                 this.users = result.users;
                 this.renderUsers();
@@ -198,6 +198,7 @@ class AdminManager {
                 <td>${user.name}</td>
                 <td>${user.email}</td>
                 <td><span class="badge badge-${user.role}">${this.getRoleText(user.role)}</span></td>
+                <td>${this.getUserTeams(user)}</td>
                 <td>${new Date(user.created_at).toLocaleDateString('vi-VN')}</td>
                 <td>
                     <div class="action-buttons">
@@ -214,6 +215,16 @@ class AdminManager {
             `;
             usersList.appendChild(row);
         });
+    }
+
+    getUserTeams(user) {
+        if (!user.active_teams || user.active_teams.length === 0) {
+            return '<span class="text-muted">Chưa có team</span>';
+        }
+
+        return user.active_teams.map(teamMember =>
+            `<span class="team-badge">${teamMember.team.name}</span>`
+        ).join(' ');
     }
 
     async loadTasks() {
@@ -726,19 +737,23 @@ AdminManager.prototype.handleDeleteUser = async function(userId) {
 // Team Management Methods
 AdminManager.prototype.loadTeams = async function() {
     try {
-        // For now, show placeholder data
-        this.displayTeams([
-            {
-                id: 1,
-                name: 'Development Team',
-                manager: { name: 'Manager A' },
-                active_members_count: 3,
-                is_active: true
+        const result = await window.api.getTeams();
+
+        if (result.success) {
+            this.teams = result.teams;
+            this.displayTeams(result.teams);
+            this.updateTeamStats(result.teams);
+        } else {
+            if (result.tokenExpired) {
+                alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                window.location.href = 'login.html';
+                return;
             }
-        ]);
-        this.updateTeamStats();
+            throw new Error(result.error || 'Không thể tải danh sách team');
+        }
     } catch (error) {
         console.error('Error loading teams:', error);
+        alert('Đã xảy ra lỗi khi tải danh sách team: ' + error.message);
     }
 };
 
@@ -772,11 +787,16 @@ AdminManager.prototype.displayTeams = function(teams) {
     `).join('');
 };
 
-AdminManager.prototype.updateTeamStats = function() {
-    // Placeholder stats
-    document.getElementById('totalTeams').textContent = '1';
-    document.getElementById('totalManagers').textContent = '1';
-    document.getElementById('totalMembers').textContent = '3';
+AdminManager.prototype.updateTeamStats = function(teams) {
+    if (!teams) teams = this.teams || [];
+
+    const totalTeams = teams.length;
+    const totalManagers = new Set(teams.map(team => team.manager_id)).size;
+    const totalMembers = teams.reduce((sum, team) => sum + (team.active_members_count || 0), 0);
+
+    document.getElementById('totalTeams').textContent = totalTeams;
+    document.getElementById('totalManagers').textContent = totalManagers;
+    document.getElementById('totalMembers').textContent = totalMembers;
 };
 
 AdminManager.prototype.loadKpiDashboard = async function() {
@@ -849,25 +869,56 @@ function deleteTeam(teamId) {
     }
 }
 
-function loadManagersForSelect(selectId) {
+async function loadManagersForSelect(selectId) {
     const select = document.getElementById(selectId);
     if (!select) return;
 
-    // Placeholder managers
-    const managers = [
-        { id: 1, name: 'Manager A' },
-        { id: 2, name: 'Manager B' }
-    ];
+    try {
+        const result = await window.api.getManagers();
 
-    select.innerHTML = '<option value="">Chọn Manager</option>' +
-        managers.map(manager => `<option value="${manager.id}">${manager.name}</option>`).join('');
+        if (result.success) {
+            select.innerHTML = '<option value="">Chọn Manager</option>' +
+                result.managers.map(manager => `<option value="${manager.id}">${manager.name}</option>`).join('');
+        } else {
+            console.error('Error loading managers:', result.error);
+            select.innerHTML = '<option value="">Không thể tải danh sách Manager</option>';
+        }
+    } catch (error) {
+        console.error('Error loading managers:', error);
+        select.innerHTML = '<option value="">Lỗi khi tải Manager</option>';
+    }
 }
 
-function handleAddTeam(event) {
+async function handleAddTeam(event) {
     event.preventDefault();
-    // Placeholder - would create team
-    console.log('Add team form submitted');
-    closeAddTeamModal();
+
+    const formData = new FormData(event.target);
+    const teamData = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        manager_id: formData.get('manager_id')
+    };
+
+    try {
+        const result = await window.api.addTeam(teamData);
+
+        if (result.success) {
+            closeAddTeamModal();
+            adminManager.loadTeams(); // Reload teams list
+            alert('Team đã được tạo thành công!');
+        } else {
+            if (result.tokenExpired) {
+                alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                window.location.href = 'login.html';
+                return;
+            }
+            throw new Error(result.error || 'Không thể tạo team');
+        }
+    } catch (error) {
+        console.error('Error adding team:', error);
+        document.getElementById('addTeamError').textContent = error.message;
+        document.getElementById('addTeamError').style.display = 'block';
+    }
 }
 
 function handleEditTeam(event) {

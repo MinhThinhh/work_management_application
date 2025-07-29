@@ -635,6 +635,153 @@ ipcMain.handle('delete-task', async (_, taskId) => {
   }
 });
 
+// Get users with teams (Admin only)
+ipcMain.handle('get-users-with-teams', async () => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized. Admin access required.' };
+  }
+
+  try {
+    console.log('Getting users with teams with token:', token.substring(0, 10) + '...');
+
+    const response = await axios.get(`${API_BASE_URL}/desktop-users-with-teams`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Get users with teams response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Get users with teams error:', error);
+
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not get users with teams'
+    };
+  }
+});
+
+// Get teams
+ipcMain.handle('get-teams', async () => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  try {
+    console.log('Getting teams with token:', token.substring(0, 10) + '...');
+
+    const response = await axios.get(`${API_BASE_URL}/desktop-teams`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Get teams response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Get teams error:', error);
+
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not get teams'
+    };
+  }
+});
+
+// Get managers
+ipcMain.handle('get-managers', async () => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  try {
+    console.log('Getting managers with token:', token.substring(0, 10) + '...');
+
+    const response = await axios.get(`${API_BASE_URL}/admin/users`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.data.success) {
+      const managers = response.data.users.filter(user => user.role === 'manager');
+      return { success: true, managers };
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Get managers error:', error);
+
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not get managers'
+    };
+  }
+});
+
+// Add team (Admin only)
+ipcMain.handle('add-team', async (_, teamData) => {
+  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
+  if (!token) {
+    return { success: false, error: 'Token not found' };
+  }
+
+  const user = store.get('user');
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized. Admin access required.' };
+  }
+
+  try {
+    console.log('Adding team with token:', token.substring(0, 10) + '...');
+    console.log('Team data:', teamData);
+
+    const response = await axios.post(`${API_BASE_URL}/teams`, teamData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Add team response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Add team error:', error);
+
+    if (error.response && error.response.status === 401) {
+      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Could not add team'
+    };
+  }
+});
+
 // Logout
 ipcMain.handle('logout', async () => {
   const user = store.get('user');

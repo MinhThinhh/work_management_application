@@ -353,6 +353,23 @@ body {
     margin: 0 0.125rem;
 }
 
+/* Team Badge */
+.team-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    margin: 0.1rem;
+    border: 1px solid #bbdefb;
+}
+
+.text-muted {
+    color: #6c757d;
+    font-style: italic;
+}
+
 /* Main Content */
 .main-content {
     flex: 1;

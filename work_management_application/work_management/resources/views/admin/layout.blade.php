@@ -528,6 +528,18 @@
                 <i class="fas fa-users"></i>
                 <span>Quản lý người dùng</span>
             </a>
+            <a href="{{ route('admin.teams.index') }}" class="sidebar-link {{ request()->routeIs('admin.teams.*') ? 'active' : '' }}">
+                <i class="fas fa-users-cog"></i>
+                <span>Quản lý Team</span>
+            </a>
+            <a href="{{ route('admin.kpi.index') }}" class="sidebar-link {{ request()->routeIs('admin.kpi.*') ? 'active' : '' }}">
+                <i class="fas fa-chart-line"></i>
+                <span>KPI Dashboard</span>
+            </a>
+            <a href="{{ route('admin.all-tasks') }}" class="sidebar-link {{ request()->routeIs('admin.all-tasks') ? 'active' : '' }}">
+                <i class="fas fa-tasks"></i>
+                <span>Xem công việc</span>
+            </a>
         </nav>
     </div>
 

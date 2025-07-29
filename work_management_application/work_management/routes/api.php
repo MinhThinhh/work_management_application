@@ -516,6 +516,53 @@ Route::middleware(\App\Http\Middleware\JwtMiddleware::class)->group(function () 
     Route::apiResource('teams', TeamController::class);
     Route::post('teams/{team}/members', [TeamController::class, 'addMember']);
     Route::delete('teams/{team}/members', [TeamController::class, 'removeMember']);
+
+    // Desktop app team endpoints
+    Route::get('desktop-teams', function (Request $request) {
+        try {
+            $token = $request->bearerToken();
+            if (!$token) {
+                return response()->json(['success' => false, 'error' => 'Token is absent'], 401);
+            }
+
+            JWTAuth::setToken($token);
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user) {
+                return response()->json(['success' => false, 'error' => 'User not found'], 401);
+            }
+
+            $teams = \App\Models\Team::with(['manager', 'activeMembers.user'])
+                        ->withCount('activeMembers')
+                        ->get();
+
+            return response()->json(['success' => true, 'teams' => $teams]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    });
+
+    Route::get('desktop-users-with-teams', function (Request $request) {
+        try {
+            $token = $request->bearerToken();
+            if (!$token) {
+                return response()->json(['success' => false, 'error' => 'Token is absent'], 401);
+            }
+
+            JWTAuth::setToken($token);
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user || $user->role !== 'admin') {
+                return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+            }
+
+            $users = \App\Models\User::with(['activeTeams'])->get();
+
+            return response()->json(['success' => true, 'users' => $users]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    });
 });
 
 // API routes for managers and admins

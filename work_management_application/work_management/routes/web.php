@@ -150,4 +150,15 @@ Route::get('/force-logout', function (Request $request) {
         ->cookie($cookie);
 });
 
+// Admin Routes
+Route::prefix('admin')->name('admin.')->middleware([\App\Http\Middleware\WebAuthenticate::class])->group(function () {
+    // Team Management
+    Route::resource('teams', \App\Http\Controllers\Admin\TeamController::class);
+    Route::post('teams/{team}/members', [\App\Http\Controllers\Admin\TeamController::class, 'addMember'])->name('teams.add-member');
+    Route::delete('teams/{team}/members', [\App\Http\Controllers\Admin\TeamController::class, 'removeMember'])->name('teams.remove-member');
+
+    // KPI Dashboard
+    Route::get('kpi', [\App\Http\Controllers\Admin\KpiController::class, 'index'])->name('kpi.index');
+});
+
 

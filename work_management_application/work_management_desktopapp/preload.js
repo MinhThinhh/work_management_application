@@ -22,6 +22,12 @@ try {
       updateTask: (taskId, taskData) => ipcRenderer.invoke('update-task', taskId, taskData),
       deleteTask: (taskId) => ipcRenderer.invoke('delete-task', taskId),
       getUsers: () => ipcRenderer.invoke('get-users'),
+      getUsersWithTeams: () => ipcRenderer.invoke('get-users-with-teams'),
+      getTeams: () => ipcRenderer.invoke('get-teams'),
+      addTeam: (teamData) => ipcRenderer.invoke('add-team', teamData),
+      updateTeam: (teamId, teamData) => ipcRenderer.invoke('update-team', teamId, teamData),
+      deleteTeam: (teamId) => ipcRenderer.invoke('delete-team', teamId),
+      getManagers: () => ipcRenderer.invoke('get-managers'),
       logout: () => ipcRenderer.invoke('logout'),
       checkApiConnection: () => ipcRenderer.invoke('check-api-connection')
     }

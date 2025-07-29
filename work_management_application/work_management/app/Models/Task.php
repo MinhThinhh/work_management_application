@@ -20,7 +20,7 @@ class Task extends Model
         'status',
         'priority',
         'creator_id',
-        'user_id',  // Updated from assigned_user_id
+        'assigned_user_id',
         'team_id',
         'assigned_by'
     ];
@@ -41,17 +41,17 @@ class Task extends Model
     /**
      * Get the user that is assigned to the task.
      */
-    public function user(): BelongsTo
+    public function assignedUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     /**
-     * Get the user that is assigned to the task (alias for backward compatibility).
+     * Get the user that is assigned to the task (alias).
      */
-    public function assignedUser(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->user();
+        return $this->assignedUser();
     }
 
     /**
