@@ -1,0 +1,23 @@
+{
+  "name": "work_management_desktopapp",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Desktop App for Work Management API",
+  "devDependencies": {
+    "electron": "^36.2.1",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "electron-store": "^8.1.0",
+    "keytar": "^7.9.0"
+  }
+}

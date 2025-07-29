@@ -1,11 +1,13 @@
 # Dependencies
 node_modules/
+work_management_desktopapp/node_modules/
 vendor/
 
 # Environment files
 .env
 .env.local
 .env.production
+.env.backup
 
 # Database
 *.sqlite
@@ -14,6 +16,8 @@ vendor/
 # Logs
 *.log
 logs/
+npm-debug.log
+yarn-error.log
 
 # Cache
 cache/
@@ -24,6 +28,8 @@ cache/
 .idea/
 *.swp
 *.swo
+*.sublime-workspace
+*.sublime-project
 
 # OS files
 .DS_Store
@@ -41,12 +47,15 @@ build/
 composer.phar
 composer.lock
 
-# Laravel specific (if using Laravel)
+# Laravel specific
 storage/logs/
 storage/framework/cache/
 storage/framework/sessions/
 storage/framework/views/
 bootstrap/cache/
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
 
 # XAMPP specific
 xampp/
