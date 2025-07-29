@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\TeamController;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 // routes/api.php
@@ -510,6 +511,11 @@ Route::middleware(\App\Http\Middleware\JwtMiddleware::class)->group(function () 
     Route::get('check-token', function () {
         return response()->json(['status' => 'Token is valid', 'user' => auth()->user()]);
     });
+
+    // Team management routes
+    Route::apiResource('teams', TeamController::class);
+    Route::post('teams/{team}/members', [TeamController::class, 'addMember']);
+    Route::delete('teams/{team}/members', [TeamController::class, 'removeMember']);
 });
 
 // API routes for managers and admins

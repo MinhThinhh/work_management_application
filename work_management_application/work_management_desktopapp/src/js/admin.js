@@ -136,6 +136,16 @@ class AdminManager {
                 addUserBtn.style.display = 'flex';
                 this.loadUsers();
                 break;
+            case 'teams':
+                pageTitle.textContent = 'Quản lý Team';
+                addUserBtn.style.display = 'none';
+                this.loadTeams();
+                break;
+            case 'kpi':
+                pageTitle.textContent = 'KPI Dashboard';
+                addUserBtn.style.display = 'none';
+                this.loadKpiDashboard();
+                break;
             case 'tasks-view':
                 pageTitle.textContent = 'Xem công việc';
                 addUserBtn.style.display = 'none';
@@ -712,6 +722,165 @@ AdminManager.prototype.handleDeleteUser = async function(userId) {
         closeConfirmDeleteModal();
     }
 };
+
+// Team Management Methods
+AdminManager.prototype.loadTeams = async function() {
+    try {
+        // For now, show placeholder data
+        this.displayTeams([
+            {
+                id: 1,
+                name: 'Development Team',
+                manager: { name: 'Manager A' },
+                active_members_count: 3,
+                is_active: true
+            }
+        ]);
+        this.updateTeamStats();
+    } catch (error) {
+        console.error('Error loading teams:', error);
+    }
+};
+
+AdminManager.prototype.displayTeams = function(teams) {
+    const tbody = document.getElementById('teamsList');
+    if (!tbody) return;
+
+    tbody.innerHTML = teams.map(team => `
+        <tr>
+            <td>${team.id}</td>
+            <td>${team.name}</td>
+            <td>${team.manager?.name || 'N/A'}</td>
+            <td>${team.active_members_count || 0}</td>
+            <td>
+                <span class="status-badge ${team.is_active ? 'active' : 'inactive'}">
+                    ${team.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="editTeam(${team.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-info" onclick="manageTeamMembers(${team.id})">
+                    <i class="fas fa-users"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteTeam(${team.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+};
+
+AdminManager.prototype.updateTeamStats = function() {
+    // Placeholder stats
+    document.getElementById('totalTeams').textContent = '1';
+    document.getElementById('totalManagers').textContent = '1';
+    document.getElementById('totalMembers').textContent = '3';
+};
+
+AdminManager.prototype.loadKpiDashboard = async function() {
+    try {
+        // Placeholder KPI data
+        this.updateKpiStats();
+        this.loadTopPerformers();
+    } catch (error) {
+        console.error('Error loading KPI dashboard:', error);
+    }
+};
+
+AdminManager.prototype.updateKpiStats = function() {
+    document.getElementById('avgCompletionRate').textContent = '85%';
+    document.getElementById('avgQualityScore').textContent = '4.2';
+    document.getElementById('onTimeRate').textContent = '78%';
+    document.getElementById('topPerformers').textContent = '5';
+};
+
+AdminManager.prototype.loadTopPerformers = function() {
+    const topPerformersList = document.getElementById('topPerformersList');
+    if (!topPerformersList) return;
+
+    const performers = [
+        { rank: 1, name: 'Nguyễn Văn A', score: '95%' },
+        { rank: 2, name: 'Trần Thị B', score: '92%' },
+        { rank: 3, name: 'Lê Văn C', score: '88%' }
+    ];
+
+    topPerformersList.innerHTML = performers.map(performer => `
+        <div class="performer-item">
+            <div class="performer-rank">${performer.rank}</div>
+            <div class="performer-info">
+                <div class="performer-name">${performer.name}</div>
+                <div class="performer-score">${performer.score}</div>
+            </div>
+        </div>
+    `).join('');
+};
+
+// Global functions for team management
+function openAddTeamModal() {
+    document.getElementById('addTeamModal').style.display = 'flex';
+    loadManagersForSelect('teamManager');
+}
+
+function closeAddTeamModal() {
+    document.getElementById('addTeamModal').style.display = 'none';
+    document.getElementById('addTeamForm').reset();
+}
+
+function editTeam(teamId) {
+    // Placeholder - would load team data and show edit modal
+    console.log('Edit team:', teamId);
+}
+
+function manageTeamMembers(teamId) {
+    document.getElementById('teamMembersModal').style.display = 'flex';
+    // Load team members
+    console.log('Manage team members:', teamId);
+}
+
+function closeTeamMembersModal() {
+    document.getElementById('teamMembersModal').style.display = 'none';
+}
+
+function deleteTeam(teamId) {
+    if (confirm('Bạn có chắc chắn muốn xóa team này?')) {
+        console.log('Delete team:', teamId);
+    }
+}
+
+function loadManagersForSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    // Placeholder managers
+    const managers = [
+        { id: 1, name: 'Manager A' },
+        { id: 2, name: 'Manager B' }
+    ];
+
+    select.innerHTML = '<option value="">Chọn Manager</option>' +
+        managers.map(manager => `<option value="${manager.id}">${manager.name}</option>`).join('');
+}
+
+function handleAddTeam(event) {
+    event.preventDefault();
+    // Placeholder - would create team
+    console.log('Add team form submitted');
+    closeAddTeamModal();
+}
+
+function handleEditTeam(event) {
+    event.preventDefault();
+    // Placeholder - would update team
+    console.log('Edit team form submitted');
+}
+
+function handleAddMember(event) {
+    event.preventDefault();
+    // Placeholder - would add member to team
+    console.log('Add member form submitted');
+}
 
 // Initialize admin manager when DOM is loaded
 let adminManager;
