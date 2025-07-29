@@ -161,4 +161,11 @@ Route::prefix('admin')->name('admin.')->middleware([\App\Http\Middleware\WebAuth
     Route::get('kpi', [\App\Http\Controllers\Admin\KpiController::class, 'index'])->name('kpi.index');
 });
 
+// Team Management Routes (for all authenticated users)
+Route::middleware([\App\Http\Middleware\WebAuthenticate::class])->group(function () {
+    Route::resource('teams', \App\Http\Controllers\Web\TeamController::class);
+    Route::post('teams/{team}/members', [\App\Http\Controllers\Web\TeamController::class, 'addMember'])->name('teams.add-member');
+    Route::delete('teams/{team}/members', [\App\Http\Controllers\Web\TeamController::class, 'removeMember'])->name('teams.remove-member');
+});
+
 

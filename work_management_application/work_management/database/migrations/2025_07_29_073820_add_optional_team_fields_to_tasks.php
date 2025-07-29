@@ -12,11 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
-            $table->foreignId('team_id')->nullable()->after('assigned_user_id')->constrained('teams')->onDelete('set null');
-            $table->foreignId('assigned_by')->nullable()->after('team_id')->constrained('users')->onDelete('set null');
-
-            $table->index('team_id');
-            $table->index('assigned_by');
+            $table->foreignId('team_id')->nullable()->constrained('teams')->onDelete('set null');
+            $table->date('start_date')->nullable();
         });
     }
 
@@ -27,10 +24,7 @@ return new class extends Migration
     {
         Schema::table('tasks', function (Blueprint $table) {
             $table->dropForeign(['team_id']);
-            $table->dropForeign(['assigned_by']);
-            $table->dropIndex(['team_id']);
-            $table->dropIndex(['assigned_by']);
-            $table->dropColumn(['team_id', 'assigned_by']);
+            $table->dropColumn(['team_id', 'start_date']);
         });
     }
 };

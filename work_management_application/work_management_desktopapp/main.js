@@ -759,7 +759,7 @@ ipcMain.handle('add-team', async (_, teamData) => {
     console.log('Adding team with token:', token.substring(0, 10) + '...');
     console.log('Team data:', teamData);
 
-    const response = await axios.post(`${API_BASE_URL}/teams`, teamData, {
+    const response = await axios.post(`${API_BASE_URL}/desktop-teams`, teamData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

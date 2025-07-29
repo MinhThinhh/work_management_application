@@ -542,6 +542,49 @@ Route::middleware(\App\Http\Middleware\JwtMiddleware::class)->group(function () 
         }
     });
 
+    Route::post('desktop-teams', function (Request $request) {
+        try {
+            $token = $request->bearerToken();
+            if (!$token) {
+                return response()->json(['success' => false, 'error' => 'Token is absent'], 401);
+            }
+
+            JWTAuth::setToken($token);
+            $user = JWTAuth::parseToken()->authenticate();
+
+            if (!$user || $user->role !== 'admin') {
+                return response()->json(['success' => false, 'error' => 'Unauthorized. Admin access required.'], 403);
+            }
+
+            $request->validate([
+                'name' => 'required|string|max:255|unique:teams',
+                'description' => 'nullable|string',
+                'manager_id' => 'required|exists:users,id'
+            ]);
+
+            // Verify the selected user is a manager
+            $manager = \App\Models\User::findOrFail($request->manager_id);
+            if ($manager->role !== 'manager') {
+                return response()->json(['success' => false, 'error' => 'Selected user is not a manager'], 400);
+            }
+
+            $team = \App\Models\Team::create([
+                'name' => $request->name,
+                'description' => $request->description,
+                'manager_id' => $request->manager_id,
+                'is_active' => true
+            ]);
+
+            $team->load(['manager', 'activeMembers.user']);
+
+            return response()->json(['success' => true, 'team' => $team, 'message' => 'Team created successfully']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    });
+
     Route::get('desktop-users-with-teams', function (Request $request) {
         try {
             $token = $request->bearerToken();
