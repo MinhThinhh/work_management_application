@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Database
+*.sqlite
+*.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+cache/
+*.cache
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Build files
+dist/
+build/
+
+# PHP specific
+composer.phar
+composer.lock
+
+# Laravel specific (if using Laravel)
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+bootstrap/cache/
+
+# XAMPP specific
+xampp/
