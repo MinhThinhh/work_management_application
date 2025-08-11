@@ -162,26 +162,6 @@ Work Management Application/
 - Chạy Work Management Web: `php artisan serve`
 - Chạy Work Management Desktop App: `npm start`
 
-## 🔧 Cập nhật gần đây
-
-### ✅ Sửa lỗi dropdown Admin Panel (Desktop App)
-- **Vấn đề**: Dropdown profile trong admin panel không hiển thị đúng
-- **Nguyên nhân**:
-  - Xung đột CSS do trùng lặp định nghĩa
-  - Vị trí dropdown không đúng
-  - Z-index không đủ cao
-  - Thiếu CSS cho content-header
-- **Giải pháp**:
-  - Xóa các định nghĩa CSS trùng lặp
-  - Sửa vị trí dropdown từ `left: 0; transform: translateX(-100%)` thành `right: 0`
-  - Tăng z-index từ 1000 lên 9999
-  - Thêm `position: relative` cho `.content-header`
-  - Thêm CSS cụ thể cho `.content-header .profile-dropdown`
-
-### 📝 Files đã sửa:
-- `work_management_desktopapp/src/css/admin.css`
-- `work_management_desktopapp/src/js/admin.js` (thêm debug code tạm thời)
-
 ---
 
 &copy; 2025 Work Management Application. All rights reserved.
