@@ -22,7 +22,6 @@
                     <th>Email</th>
                     <th>Vai trò</th>
                     <th>Ngày tạo</th>
-                    <th>Số công việc</th>
                     <th>Thao tác</th>
                 </tr>
             </thead>
@@ -42,7 +41,6 @@
                         @endif
                     </td>
                     <td>{{ $user->created_at->format('d/m/Y') }}</td>
-                    <td>{{ $user->tasks()->count() }}</td>
                     <td class="flex space-x-2">
                         <a href="{{ route('admin.edit-user', $user->id) }}" class="btn btn-sm btn-primary">
                             <i class="fas fa-edit"></i> Sửa

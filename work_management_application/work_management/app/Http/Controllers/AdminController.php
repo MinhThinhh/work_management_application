@@ -229,7 +229,7 @@ class AdminController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
             // Admin chỉ có thể xem danh sách công việc, không thể thêm/sửa/xóa
-            $tasks = Task::with('creator')->get();
+            $tasks = Task::with(['creator', 'assignedUser'])->get();
             return view('admin.all-tasks', compact('tasks'));
         } catch (\Exception $e) {
             Log::error('Error in AdminController@allTasks: ' . $e->getMessage());

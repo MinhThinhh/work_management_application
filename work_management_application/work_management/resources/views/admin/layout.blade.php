@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -530,22 +531,18 @@
             </a>
             <a href="{{ route('admin.teams.index') }}" class="sidebar-link {{ request()->routeIs('admin.teams.*') ? 'active' : '' }}">
                 <i class="fas fa-users-cog"></i>
-                <span>Quản lý Team</span>
+                <span>Quản lý đội nhóm</span>
             </a>
             <a href="{{ route('admin.kpi.index') }}" class="sidebar-link {{ request()->routeIs('admin.kpi.*') ? 'active' : '' }}">
                 <i class="fas fa-chart-line"></i>
-                <span>KPI Dashboard</span>
-            </a>
-            <a href="{{ route('admin.all-tasks') }}" class="sidebar-link {{ request()->routeIs('admin.all-tasks') ? 'active' : '' }}">
-                <i class="fas fa-tasks"></i>
-                <span>Xem công việc</span>
+                <span>KPI</span>
             </a>
         </nav>
     </div>
 
     <div class="content">
         <div class="header">
-            <h1 class="header-title">@yield('header', 'Dashboard')</h1>
+            <h1 class="header-title">@yield('header', 'Quản lý đội nhóm')</h1>
             <div class="header-actions">
                 <div class="relative">
                     <button id="profile-button" class="profile-button">
@@ -685,6 +682,7 @@
         });
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @yield('scripts')
 </body>
 </html>

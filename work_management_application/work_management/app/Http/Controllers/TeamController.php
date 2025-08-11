@@ -21,19 +21,19 @@ class TeamController extends Controller
             $user = Auth::user();
             
             if ($user->role === 'admin') {
-                $teams = Team::with(['manager', 'activeMembers.user'])
-                           ->withCount('activeMembers')
+                $teams = Team::with(['leader', 'members'])
+                           ->withCount('members')
                            ->get();
             } elseif ($user->role === 'manager') {
-                $teams = Team::where('manager_id', $user->id)
-                           ->with(['manager', 'activeMembers.user'])
-                           ->withCount('activeMembers')
+                $teams = Team::where('leader_id', $user->id)
+                           ->with(['leader', 'members'])
+                           ->withCount('members')
                            ->get();
             } else {
-                $teams = $user->activeTeams()
-                            ->with(['manager', 'activeMembers.user'])
-                            ->withCount('activeMembers')
-                            ->get();
+                $teams = collect();
+                if ($user->team) {
+                    $teams = collect([$user->team->load(['leader', 'members'])]);
+                }
             }
 
             return response()->json([

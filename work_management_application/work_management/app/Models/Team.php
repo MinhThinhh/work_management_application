@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class Team extends Model
 {
@@ -15,57 +15,44 @@ class Team extends Model
     protected $fillable = [
         'name',
         'description',
-        'manager_id',
-        'is_active'
+        'leader_id',
+        'status'
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'status' => 'string',
     ];
 
     /**
-     * Get the manager of the team
+     * Get the leader of the team
      */
-    public function manager(): BelongsTo
+    public function leader(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'manager_id');
+        return $this->belongsTo(User::class, 'leader_id');
     }
 
     /**
-     * Get all team members
+     * Get all members of this team
      */
-    public function teamMembers(): HasMany
+    public function members(): HasMany
     {
-        return $this->hasMany(TeamMember::class);
+        return $this->hasMany(User::class, 'team_id');
     }
 
     /**
-     * Get active team members
+     * Get all active members (users with this team_id)
      */
     public function activeMembers(): HasMany
     {
-        return $this->hasMany(TeamMember::class)->where('is_active', true);
+        return $this->members();
     }
 
     /**
-     * Get users in this team
+     * Get member count
      */
-    public function users(): BelongsToMany
+    public function getMemberCountAttribute(): int
     {
-        return $this->belongsToMany(User::class, 'team_members')
-                    ->withPivot(['joined_at', 'role_in_team', 'is_active'])
-                    ->withTimestamps();
-    }
-
-    /**
-     * Get active users in this team
-     */
-    public function activeUsers(): BelongsToMany
-    {
-        return $this->belongsToMany(User::class, 'team_members')
-                    ->wherePivot('is_active', true)
-                    ->withPivot(['joined_at', 'role_in_team', 'is_active'])
-                    ->withTimestamps();
+        return $this->members()->count();
     }
 
     /**
@@ -97,23 +84,15 @@ class Team extends Model
      */
     public function hasMember(User $user): bool
     {
-        return $this->teamMembers()
-                    ->where('user_id', $user->id)
-                    ->where('is_active', true)
-                    ->exists();
+        return $this->members()->where('id', $user->id)->exists();
     }
 
     /**
      * Add member to team
      */
-    public function addMember(User $user, string $role = 'member'): TeamMember
+    public function addMember(User $user): bool
     {
-        return $this->teamMembers()->create([
-            'user_id' => $user->id,
-            'role_in_team' => $role,
-            'joined_at' => now(),
-            'is_active' => true
-        ]);
+        return $user->update(['team_id' => $this->id]);
     }
 
     /**
@@ -121,9 +100,7 @@ class Team extends Model
      */
     public function removeMember(User $user): bool
     {
-        return $this->teamMembers()
-                    ->where('user_id', $user->id)
-                    ->update(['is_active' => false]);
+        return $user->update(['team_id' => null]);
     }
 
     /**
@@ -131,11 +108,14 @@ class Team extends Model
      */
     public function getStats(): array
     {
-        $totalMembers = $this->activeMembers()->count();
-        $totalTasks = $this->tasks()->count();
-        $completedTasks = $this->tasks()->where('status', 'completed')->count();
-        $pendingTasks = $this->tasks()->where('status', 'pending')->count();
-        $inProgressTasks = $this->tasks()->where('status', 'in_progress')->count();
+        $totalMembers = $this->members()->count();
+
+        // Get tasks assigned to team members
+        $memberIds = $this->members()->pluck('id');
+        $totalTasks = Task::whereIn('assigned_to', $memberIds)->count();
+        $completedTasks = Task::whereIn('assigned_to', $memberIds)->where('status', 'completed')->count();
+        $pendingTasks = Task::whereIn('assigned_to', $memberIds)->where('status', 'pending')->count();
+        $inProgressTasks = Task::whereIn('assigned_to', $memberIds)->where('status', 'in_progress')->count();
 
         return [
             'total_members' => $totalMembers,

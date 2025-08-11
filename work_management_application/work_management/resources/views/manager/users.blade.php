@@ -15,9 +15,9 @@
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Email</th>
+                    <th>Tên</th>
                     <th>Ngày tạo</th>
-                    <th>Số công việc</th>
+                    <th>Số công việc được giao</th>
                     <th>Thao tác</th>
                 </tr>
             </thead>
@@ -25,9 +25,9 @@
                 @forelse($users as $user)
                 <tr>
                     <td>{{ $user->id }}</td>
-                    <td>{{ $user->email }}</td>
+                    <td>{{ $user->name }}</td>
                     <td>{{ $user->created_at->format('d/m/Y') }}</td>
-                    <td>{{ $user->tasks()->count() }}</td>
+                    <td>{{ $user->assignedTasks()->count() }}</td>
                     <td>
                         <a href="{{ route('manager.create-task', ['user_id' => $user->id]) }}" class="text-blue-600 hover:underline">Tạo công việc</a>
                     </td>

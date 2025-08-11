@@ -99,6 +99,9 @@
                         <div class="flex-grow-1">
                             <h6 class="mb-0">{{ $performer['name'] }}</h6>
                             <small class="text-muted">{{ $performer['score'] }}% hoàn thành</small>
+                            @if(isset($performer['team']))
+                            <br><small class="text-info">Team: {{ $performer['team'] }}</small>
+                            @endif
                         </div>
                     </div>
                     @empty
@@ -129,6 +132,71 @@
                 </div>
                 <div class="card-body">
                     <canvas id="priorityChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Details -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Chi tiết Teams</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Leader</th>
+                                    <th>Số thành viên</th>
+                                    <th>Tổng tasks</th>
+                                    <th>Hoàn thành</th>
+                                    <th>Đang thực hiện</th>
+                                    <th>Chờ xử lý</th>
+                                    <th>Tỷ lệ hoàn thành</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if(isset($teamDetails))
+                                @foreach($teamDetails as $team)
+                                <tr>
+                                    <td><strong>{{ $team['name'] }}</strong></td>
+                                    <td>{{ $team['leader'] }}</td>
+                                    <td>{{ $team['total_members'] }}</td>
+                                    <td>{{ $team['total_tasks'] }}</td>
+                                    <td><span class="badge bg-success">{{ $team['completed_tasks'] }}</span></td>
+                                    <td><span class="badge bg-info">{{ $team['in_progress_tasks'] }}</span></td>
+                                    <td><span class="badge bg-warning">{{ $team['pending_tasks'] }}</span></td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" role="progressbar"
+                                                 style="width: {{ $team['completion_rate'] }}%"
+                                                 aria-valuenow="{{ $team['completion_rate'] }}"
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                {{ $team['completion_rate'] }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @if(count($team['members']) > 0)
+                                <tr>
+                                    <td colspan="8" class="bg-light">
+                                        <small><strong>Thành viên:</strong>
+                                        @foreach($team['members'] as $member)
+                                            <span class="badge bg-secondary me-1">{{ $member }}</span>
+                                        @endforeach
+                                        </small>
+                                    </td>
+                                </tr>
+                                @endif
+                                @endforeach
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

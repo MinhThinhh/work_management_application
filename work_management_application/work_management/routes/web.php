@@ -120,6 +120,78 @@ Route::get('/health-check', function () {
     ]);
 });
 
+// Test route - bypass middleware
+Route::get('/test-teams', function () {
+    $teams = \App\Models\Team::with(['leader', 'members'])->get();
+    $managers = \App\Models\User::where('role', 'manager')->get();
+    return view('admin.teams', compact('teams', 'managers'));
+});
+
+// Debug token status
+Route::get('/token-status', function (Request $request) {
+    $sessionToken = Session::get('jwt_token');
+    $cookieToken = $request->cookie('jwt_token');
+
+    $status = [
+        'session_token' => $sessionToken ? 'EXISTS' : 'NONE',
+        'cookie_token' => $cookieToken ? 'EXISTS' : 'NONE',
+        'user_authenticated' => Auth::check() ? 'YES' : 'NO',
+    ];
+
+    if ($sessionToken) {
+        try {
+            JWTAuth::setToken($sessionToken);
+            $payload = JWTAuth::getPayload($sessionToken);
+            $status['token_exp'] = date('Y-m-d H:i:s', $payload['exp']);
+            $status['time_left'] = $payload['exp'] - time() . ' seconds';
+        } catch (\Exception $e) {
+            $status['token_error'] = $e->getMessage();
+        }
+    }
+
+    return response()->json($status);
+});
+
+// Simple login form
+Route::get('/simple-login', function () {
+    return '
+    <form method="POST" action="/simple-login">
+        <input type="hidden" name="_token" value="' . csrf_token() . '">
+        <div>
+            <label>Email:</label>
+            <input type="email" name="email" value="test@admin.com" required>
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" name="password" value="123456" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>';
+});
+
+// Simple login test
+Route::post('/simple-login', function (Request $request) {
+    $credentials = $request->only('email', 'password');
+
+    if (Auth::attempt($credentials)) {
+        $user = Auth::user();
+
+        // Create JWT token
+        $token = JWTAuth::fromUser($user);
+
+        // Set cookie and redirect
+        $cookie = cookie('jwt_token', $token, 60 * 24); // 24 hours
+
+        if ($user->role === 'admin') {
+            return redirect('/test-teams')->cookie($cookie);
+        }
+
+        return redirect('/dashboard')->cookie($cookie);
+    }
+
+    return back()->with('error', 'Invalid credentials');
+});
+
 // Force logout route - xóa hoàn toàn session và cookie
 Route::get('/force-logout', function (Request $request) {
     // Đăng xuất Laravel Auth
@@ -154,8 +226,9 @@ Route::get('/force-logout', function (Request $request) {
 Route::prefix('admin')->name('admin.')->middleware([\App\Http\Middleware\WebAuthenticate::class])->group(function () {
     // Team Management
     Route::resource('teams', \App\Http\Controllers\Admin\TeamController::class);
-    Route::post('teams/{team}/members', [\App\Http\Controllers\Admin\TeamController::class, 'addMember'])->name('teams.add-member');
-    Route::delete('teams/{team}/members', [\App\Http\Controllers\Admin\TeamController::class, 'removeMember'])->name('teams.remove-member');
+    Route::get('teams/{team}/members', [\App\Http\Controllers\Admin\TeamController::class, 'getMembers'])->name('teams.get-members');
+    Route::post('teams/{team}/add-member', [\App\Http\Controllers\Admin\TeamController::class, 'addMember'])->name('teams.add-member');
+    Route::post('teams/{team}/remove-member', [\App\Http\Controllers\Admin\TeamController::class, 'removeMember'])->name('teams.remove-member');
 
     // KPI Dashboard
     Route::get('kpi', [\App\Http\Controllers\Admin\KpiController::class, 'index'])->name('kpi.index');

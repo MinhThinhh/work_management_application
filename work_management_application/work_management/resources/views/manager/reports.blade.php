@@ -86,7 +86,7 @@
             <tbody>
                 @forelse($userStats as $user)
                 <tr>
-                    <td>{{ $user->email }}</td>
+                    <td>{{ $user->name }}</td>
                     <td>{{ $user->total_tasks }}</td>
                     <td>{{ $user->pending_tasks }}</td>
                     <td>{{ $user->in_progress_tasks }}</td>

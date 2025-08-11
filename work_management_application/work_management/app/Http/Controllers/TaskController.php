@@ -24,13 +24,29 @@ class TaskController extends Controller
             // Lấy user hiện tại
             $user = Auth::user();
 
-            // Phân quyền: Manager xem tất cả tasks, User chỉ xem tasks của mình, Admin không xem tasks
+            // Phân quyền: Manager chỉ xem tasks của team họ quản lý, User chỉ xem tasks của mình, Admin không xem tasks
             if ($user->role === 'manager') {
-                $tasks = Task::with('creator')->get();
+                // Manager chỉ xem tasks của team họ quản lý
+                $managedTeams = $user->managedTeams()->pluck('id');
+                $teamMemberIds = \App\Models\User::whereIn('team_id', $managedTeams)->pluck('id');
+
+                $tasks = Task::with(['creator', 'assignedUser'])
+                    ->where(function($query) use ($teamMemberIds, $user) {
+                        $query->whereIn('creator_id', $teamMemberIds)
+                              ->orWhereIn('assigned_to', $teamMemberIds)
+                              ->orWhere('creator_id', $user->id); // Tasks tạo bởi chính manager
+                    })
+                    ->get();
             } elseif ($user->role === 'admin') {
-                return response()->json(['error' => 'Admin không có quyền xem tasks. Admin chỉ quản lý users.'], 403);
+                return response()->json(['error' => 'Admin không có quyền xem tasks. Admin chỉ quản lý users và teams.'], 403);
             } else {
-                $tasks = Task::where('creator_id', $user->id)->get();
+                // User chỉ xem tasks được giao cho họ hoặc do họ tạo
+                $tasks = Task::with(['creator', 'assignedUser'])
+                    ->where(function($query) use ($user) {
+                        $query->where('creator_id', $user->id)
+                              ->orWhere('assigned_to', $user->id);
+                    })
+                    ->get();
             }
 
             return response()->json($tasks);
@@ -46,8 +62,11 @@ class TaskController extends Controller
             // Lấy user hiện tại
             $user = Auth::user();
 
-            // Lấy các task của user hiện tại
-            $tasks = Task::where('creator_id', $user->id)->get();
+            // Lấy các task được giao cho user hiện tại hoặc do họ tạo
+            $tasks = Task::where(function($query) use ($user) {
+                $query->where('assigned_to', $user->id)
+                      ->orWhere('creator_id', $user->id);
+            })->get();
 
             if ($request->query('view') == 'calendar') {
                 $calendarEvents = $tasks->map(function ($task) {
@@ -341,7 +360,10 @@ class TaskController extends Controller
 
             $events = Task::whereDate('start_date', '<=', $date)
                 ->whereDate('due_date', '>=', $date)
-                ->where('creator_id', $user->id) // Lọc theo user hiện tại
+                ->where(function($query) use ($user) {
+                    $query->where('assigned_to', $user->id)
+                          ->orWhere('creator_id', $user->id);
+                }) // Lọc theo user hiện tại
                 ->get()
                 ->map(function ($task) {
                     return [

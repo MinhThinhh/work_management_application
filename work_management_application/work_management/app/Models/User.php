@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
@@ -80,52 +81,33 @@ class User extends Authenticatable implements JWTSubject
      */
     public function managedTeams(): HasMany
     {
-        return $this->hasMany(Team::class, 'manager_id');
+        return $this->hasMany(Team::class, 'leader_id');
     }
 
     /**
-     * Get team memberships
+     * Get the team this user belongs to
      */
-    public function teamMemberships(): HasMany
+    public function team(): BelongsTo
     {
-        return $this->hasMany(TeamMember::class);
+        return $this->belongsTo(Team::class);
     }
 
-    /**
-     * Get active team memberships
-     */
-    public function activeTeamMemberships(): HasMany
-    {
-        return $this->hasMany(TeamMember::class)->where('is_active', true);
-    }
 
-    /**
-     * Get teams this user belongs to
-     */
-    public function teams(): BelongsToMany
-    {
-        return $this->belongsToMany(Team::class, 'team_members')
-                    ->withPivot(['joined_at', 'role_in_team', 'is_active'])
-                    ->withTimestamps();
-    }
-
-    /**
-     * Get active teams this user belongs to
-     */
-    public function activeTeams(): BelongsToMany
-    {
-        return $this->belongsToMany(Team::class, 'team_members')
-                    ->wherePivot('is_active', true)
-                    ->withPivot(['joined_at', 'role_in_team', 'is_active'])
-                    ->withTimestamps();
-    }
 
     /**
      * Get tasks assigned to this user
      */
     public function assignedTasks(): HasMany
     {
-        return $this->hasMany(Task::class, 'user_id');
+        return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+    /**
+     * Get tasks created by this user
+     */
+    public function createdTasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'creator_id');
     }
 
     /**
@@ -217,29 +199,14 @@ class User extends Authenticatable implements JWTSubject
      */
     public function isMemberOf(Team $team): bool
     {
-        return $this->activeTeamMemberships()
-                    ->where('team_id', $team->id)
-                    ->exists();
+        return $this->team_id === $team->id;
     }
 
     /**
-     * Get user's current team (first active team)
+     * Get user's current team
      */
     public function getCurrentTeam(): ?Team
     {
-        return $this->activeTeams()->first();
-    }
-
-    /**
-     * Get user's role in a specific team
-     */
-    public function getRoleInTeam(Team $team): ?string
-    {
-        $membership = $this->teamMemberships()
-                          ->where('team_id', $team->id)
-                          ->where('is_active', true)
-                          ->first();
-
-        return $membership?->role_in_team;
+        return $this->team;
     }
 }

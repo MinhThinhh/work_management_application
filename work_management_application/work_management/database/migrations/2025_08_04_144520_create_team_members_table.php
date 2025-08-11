@@ -15,11 +15,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('team_id')->constrained('teams')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->string('role_in_team')->default('member'); // member, senior_member, team_lead
+            $table->timestamp('joined_at')->nullable();
+            $table->string('role_in_team')->default('member');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
+            // Unique constraint to prevent duplicate team memberships
             $table->unique(['team_id', 'user_id']);
+
+            // Indexes for better performance
+            $table->index(['team_id', 'is_active']);
+            $table->index(['user_id', 'is_active']);
         });
     }
 

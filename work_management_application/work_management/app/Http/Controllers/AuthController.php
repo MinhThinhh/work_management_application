@@ -15,6 +15,32 @@ use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class AuthController extends Controller
 {
+    public function checkSession(Request $request)
+    {
+        try {
+            $token = $request->bearerToken();
+            if (!$token) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $user = JWTAuth::parseToken()->authenticate();
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'user' => $user
+            ]);
+        } catch (TokenExpiredException $e) {
+            return response()->json(['error' => 'Token has expired'], 401);
+        } catch (TokenInvalidException $e) {
+            return response()->json(['error' => 'Token is invalid'], 401);
+        } catch (JWTException $e) {
+            return response()->json(['error' => 'Token is absent'], 401);
+        }
+    }
+
     public function showLoginForm()
     {
         return view('login');
@@ -24,6 +50,8 @@ class AuthController extends Controller
     {
         return view('register');
     }
+
+    // Removed duplicate login method to resolve redeclaration error.
 
     public function register(Request $request)
     {
@@ -58,18 +86,18 @@ class AuthController extends Controller
             ]);
 
             if ($request->wantsJson()) {
-                return response()->json(['message' => 'Đăng ký thành công'], 201);
+                return response()->json(['message' => __('auth.register_success')], 201);
             }
 
-            return redirect()->route('login')->with('success', 'Đăng ký thành công! Vui lòng đăng nhập.');
+            return redirect()->route('login')->with('success', __('auth.register_success') . ' Vui lòng đăng nhập.');
         } catch (\Exception $e) {
             Log::error('Lỗi đăng ký: ' . $e->getMessage());
 
             if ($request->wantsJson()) {
-                return response()->json(['error' => 'Đăng ký thất bại: ' . $e->getMessage()], 500);
+                return response()->json(['error' => __('messages.error') . ': ' . $e->getMessage()], 500);
             }
 
-            return redirect()->back()->with('error', 'Đăng ký thất bại: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', __('messages.error') . ': ' . $e->getMessage())->withInput();
         }
     }
 
@@ -175,7 +203,7 @@ class AuthController extends Controller
                     );
 
                     return redirect()->intended($redirectTo)
-                        ->with('login_success', 'Đăng nhập thành công! Chào mừng bạn trở lại, ' . $user->name . '!')
+                        ->with('login_success', __('auth.login_success') . ' Chào mừng bạn trở lại, ' . $user->name . '!')
                         ->cookie($cookie);
                 } catch (\Exception $jwtException) {
                     Log::error('Lỗi tạo JWT token: ' . $jwtException->getMessage());
@@ -187,11 +215,11 @@ class AuthController extends Controller
             Log::error('Đăng nhập thất bại: Thông tin không hợp lệ cho email ' . $credentials['email']);
 
             if ($request->wantsJson() || $request->ajax() || $request->expectsJson()) {
-                return response()->json(['error' => 'Thông tin đăng nhập không chính xác'], 401);
+                return response()->json(['error' => __('auth.invalid_credentials')], 401);
             }
 
             return back()->withErrors([
-                'email' => 'Thông tin đăng nhập không chính xác',
+                'email' => __('auth.invalid_credentials'),
             ])->withInput();
         } catch (\Exception $e) {
             Log::error('Lỗi đăng nhập: ' . $e->getMessage());

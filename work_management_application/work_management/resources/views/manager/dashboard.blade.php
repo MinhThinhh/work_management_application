@@ -100,9 +100,9 @@
                         <td>
                             <div class="flex items-center">
                                 <div class="user-avatar mr-2">
-                                    {{ $task->creator ? substr($task->creator->email, 0, 2) : 'NA' }}
+                                    {{ $task->assignedUser ? substr($task->assignedUser->name, 0, 2) : ($task->creator ? substr($task->creator->name, 0, 2) : 'NA') }}
                                 </div>
-                                <span>{{ $task->creator ? $task->creator->email : 'Không có' }}</span>
+                                <span>{{ $task->assignedUser ? $task->assignedUser->name : ($task->creator ? $task->creator->name : 'Chưa giao') }}</span>
                             </div>
                         </td>
                         <td>{{ $task->start_date ? date('d/m/Y', strtotime($task->start_date)) : 'Chưa đặt' }}</td>

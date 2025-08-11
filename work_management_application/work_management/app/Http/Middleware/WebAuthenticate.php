@@ -65,8 +65,26 @@ class WebAuthenticate
                 if ($user) {
                     // Đăng nhập tạm thời cho request này
                     Auth::login($user);
-                    // Đồng bộ token vào session
-                    Session::put('jwt_token', $token);
+
+                    // Kiểm tra nếu token sắp hết hạn (còn < 30 phút), refresh token
+                    $payload = JWTAuth::getPayload($token);
+                    $exp = $payload['exp'];
+                    $now = time();
+                    $timeLeft = $exp - $now;
+
+                    if ($timeLeft < 1800) { // < 30 phút
+                        try {
+                            $newToken = JWTAuth::refresh($token);
+                            Session::put('jwt_token', $newToken);
+                            \Cookie::queue('jwt_token', $newToken, 60 * 24); // 24 hours
+                            \Log::info('Token refreshed for user: ' . $user->id);
+                        } catch (\Exception $e) {
+                            \Log::warning('Failed to refresh token: ' . $e->getMessage());
+                        }
+                    } else {
+                        // Đồng bộ token vào session
+                        Session::put('jwt_token', $token);
+                    }
 
                     // Ghi log thành công
                     \Log::info('User authenticated via cookie token: ' . $user->id);

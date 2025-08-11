@@ -559,43 +559,7 @@ ipcMain.handle('update-task', async (_, taskId, taskData) => {
   }
 });
 
-// Get users (Manager only)
-ipcMain.handle('get-users', async () => {
-  const token = await keytar.getPassword(SERVICE_NAME, store.get('user.email'));
-  if (!token) {
-    return { success: false, error: 'Token not found' };
-  }
 
-  const user = store.get('user');
-  if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
-    return { success: false, error: 'Unauthorized. Manager or admin access required.' };
-  }
-
-  try {
-    console.log('Getting users with token:', token.substring(0, 10) + '...');
-
-    const response = await axios.get(`${API_BASE_URL}/manager/users`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    console.log('Get users response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Get users error:', error);
-
-    // Check if token expired
-    if (error.response && error.response.status === 401) {
-      return { success: false, error: 'Token expired or invalid', tokenExpired: true };
-    }
-
-    return {
-      success: false,
-      error: error.response?.data?.error || error.message || 'Could not get users'
-    };
-  }
-});
 
 // Delete task (Manager only)
 ipcMain.handle('delete-task', async (_, taskId) => {

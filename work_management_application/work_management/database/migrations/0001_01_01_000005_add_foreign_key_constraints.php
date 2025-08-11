@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->foreignId('team_id')->nullable()->constrained('teams')->onDelete('set null');
+        // Add foreign key constraint for users.team_id
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('set null');
         });
     }
 
@@ -21,9 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['team_id']);
-            $table->dropColumn('team_id');
         });
     }
 };

@@ -12,6 +12,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 // Public routes
 Route::post('login', [AuthController::class, 'login']);
 Route::post('register', [AuthController::class, 'register']);
+Route::get('auth/session', [AuthController::class, 'checkSession']);
 
 // Desktop app endpoints
 Route::post('desktop-login', [AuthController::class, 'desktopLogin']);
@@ -371,7 +372,7 @@ Route::delete('desktop-tasks/{id}', function (Request $request, $id) {
 Route::get('health-check', function () {
     return response()->json([
         'status' => 'ok',
-        'message' => 'API is running',
+        'message' => __('messages.api_success'),
         'timestamp' => now()->toIso8601String()
     ]);
 });

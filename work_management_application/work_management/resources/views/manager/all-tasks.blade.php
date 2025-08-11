@@ -23,7 +23,7 @@
                 <tr>
                     <th>ID</th>
                     <th>Tiêu đề</th>
-                    <th>Người dùng</th>
+                    <th>Người thực hiện</th>
                     <th>Ngày bắt đầu</th>
                     <th>Ngày kết thúc</th>
                     <th>Trạng thái</th>
@@ -36,7 +36,7 @@
                 <tr>
                     <td>{{ $task->id }}</td>
                     <td>{{ $task->title }}</td>
-                    <td>{{ $task->creator->email }}</td>
+                    <td>{{ $task->assignedUser ? $task->assignedUser->name : 'Chưa giao' }}</td>
                     <td>{{ $task->start_date ? date('d/m/Y', strtotime($task->start_date)) : 'N/A' }}</td>
                     <td>{{ $task->due_date ? date('d/m/Y', strtotime($task->due_date)) : 'N/A' }}</td>
                     <td>

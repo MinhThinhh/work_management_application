@@ -40,7 +40,7 @@
                     @endauth
                 </div>
 
-                @auth
+                <!-- @auth
                 <div class="flex items-center space-x-4">
                     <span class="text-gray-600">{{ auth()->user()->email }}</span>
                     <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">{{ ucfirst(auth()->user()->role) }}</span>
@@ -53,7 +53,7 @@
                 <div class="space-x-4">
                     <a href="{{ route('login') }}" class="text-gray-600 hover:text-gray-900">Login</a>
                 </div>
-                @endauth
+                @endauth -->
             </div>
         </div>
     </nav>

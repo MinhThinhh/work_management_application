@@ -22,8 +22,17 @@ class ManagerController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
 
-            // Lấy 5 công việc gần đây nhất
-            $recentTasks = Task::with('creator')
+            // Lấy 5 công việc gần đây nhất của team
+            $user = Auth::user();
+            $managedTeams = $user->managedTeams()->pluck('id');
+            $teamMemberIds = User::whereIn('team_id', $managedTeams)->pluck('id');
+
+            $recentTasks = Task::with(['creator', 'assignedUser'])
+                ->where(function($query) use ($teamMemberIds, $user) {
+                    $query->whereIn('assigned_to', $teamMemberIds)
+                          ->orWhereIn('creator_id', $teamMemberIds)
+                          ->orWhere('creator_id', $user->id);
+                })
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();
@@ -73,8 +82,9 @@ class ManagerController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
 
-            // Manager chỉ có thể xem danh sách user để gán task, không thể thêm/sửa/xóa
-            $users = User::where('role', 'user')->get();
+            // Manager chỉ có thể xem danh sách user trong team họ quản lý
+            $managedTeams = Auth::user()->managedTeams()->pluck('id');
+            $users = User::whereIn('team_id', $managedTeams)->get();
 
             // Nếu là API request (từ desktop app), trả về JSON
             if (request()->wantsJson() || request()->header('Authorization')) {
@@ -131,7 +141,18 @@ class ManagerController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
 
-            $tasks = Task::with(['creator'])->get();
+            // Manager chỉ xem tasks của team họ quản lý
+            $user = Auth::user();
+            $managedTeams = $user->managedTeams()->pluck('id');
+            $teamMemberIds = User::whereIn('team_id', $managedTeams)->pluck('id');
+
+            $tasks = Task::with(['creator', 'assignedUser'])
+                ->where(function($query) use ($teamMemberIds, $user) {
+                    $query->whereIn('creator_id', $teamMemberIds)
+                          ->orWhereIn('assigned_to', $teamMemberIds)
+                          ->orWhere('creator_id', $user->id); // Tasks tạo bởi chính manager
+                })
+                ->get();
 
             // Nếu là API request (từ desktop app), trả về JSON
             if (request()->wantsJson() || request()->header('Authorization')) {
@@ -310,21 +331,29 @@ class ManagerController extends Controller
             if (Auth::user()->role !== 'manager' && Auth::user()->role !== 'admin') {
                 return redirect()->route('dashboard')->with('error', 'Bạn không có quyền truy cập trang này.');
             }
-            $totalTasks = Task::count();
-            $pendingTasks = Task::where('status', 'pending')->count();
-            $inProgressTasks = Task::where('status', 'in_progress')->count();
-            $completedTasks = Task::where('status', 'completed')->count();
+            $user = Auth::user();
 
-            $userStats = User::where('role', 'user')
+            // Lấy team mà manager này quản lý
+            $managedTeams = $user->managedTeams()->pluck('id');
+            $teamMemberIds = User::whereIn('team_id', $managedTeams)->pluck('id');
+
+            // Thống kê tasks của team
+            $totalTasks = Task::whereIn('assigned_to', $teamMemberIds)->count();
+            $pendingTasks = Task::whereIn('assigned_to', $teamMemberIds)->where('status', 'pending')->count();
+            $inProgressTasks = Task::whereIn('assigned_to', $teamMemberIds)->where('status', 'in_progress')->count();
+            $completedTasks = Task::whereIn('assigned_to', $teamMemberIds)->where('status', 'completed')->count();
+
+            // Thống kê theo từng thành viên trong team
+            $userStats = User::whereIn('team_id', $managedTeams)
                 ->withCount([
-                    'tasks as total_tasks',
-                    'tasks as pending_tasks' => function ($query) {
+                    'assignedTasks as total_tasks',
+                    'assignedTasks as pending_tasks' => function ($query) {
                         $query->where('status', 'pending');
                     },
-                    'tasks as in_progress_tasks' => function ($query) {
+                    'assignedTasks as in_progress_tasks' => function ($query) {
                         $query->where('status', 'in_progress');
                     },
-                    'tasks as completed_tasks' => function ($query) {
+                    'assignedTasks as completed_tasks' => function ($query) {
                         $query->where('status', 'completed');
                     }
                 ])

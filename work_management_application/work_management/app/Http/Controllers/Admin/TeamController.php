@@ -7,26 +7,31 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-class TeamController extends Controller
+class TeamController extends Controller implements HasMiddleware
 {
-    public function __construct()
+    public static function middleware(): array
     {
-        $this->middleware('auth');
-        $this->middleware(function ($request, $next) {
-            if (Auth::user()->role !== 'admin') {
-                abort(403, 'Unauthorized');
-            }
-            return $next($request);
-        });
+        return [
+            'auth',
+            new Middleware(function ($request, $next) {
+                if (Auth::user()->role !== 'admin') {
+                    abort(403, 'Unauthorized');
+                }
+                return $next($request);
+            })
+        ];
     }
 
     public function index()
     {
-        $teams = Team::with(['manager', 'activeMembers'])->get();
+        $teams = Team::with(['leader', 'members'])->get();
         $managers = User::where('role', 'manager')->get();
-        
-        return view('admin.teams', compact('teams', 'managers'));
+        $users = User::where('role', 'user')->get();
+
+        return view('admin.teams', compact('teams', 'managers', 'users'));
     }
 
     public function store(Request $request)
@@ -34,20 +39,20 @@ class TeamController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:teams',
             'description' => 'nullable|string',
-            'manager_id' => 'required|exists:users,id'
+            'leader_id' => 'required|exists:users,id'
         ]);
 
         // Verify the selected user is a manager
-        $manager = User::findOrFail($request->manager_id);
-        if ($manager->role !== 'manager') {
-            return back()->withErrors(['manager_id' => 'Người được chọn không phải là manager']);
+        $leader = User::findOrFail($request->leader_id);
+        if ($leader->role !== 'manager') {
+            return back()->withErrors(['leader_id' => 'Người được chọn không phải là manager']);
         }
 
         Team::create([
             'name' => $request->name,
             'description' => $request->description,
-            'manager_id' => $request->manager_id,
-            'is_active' => true
+            'leader_id' => $request->leader_id,
+            'status' => 'active'
         ]);
 
         return redirect()->route('admin.teams.index')
@@ -56,7 +61,7 @@ class TeamController extends Controller
 
     public function show(Team $team)
     {
-        $team->load(['manager', 'activeMembers.user']);
+        $team->load(['leader', 'members']);
         return view('admin.teams.show', compact('team'));
     }
 
@@ -71,21 +76,21 @@ class TeamController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:teams,name,' . $team->id,
             'description' => 'nullable|string',
-            'manager_id' => 'required|exists:users,id',
-            'is_active' => 'boolean'
+            'leader_id' => 'required|exists:users,id',
+            'status' => 'required|in:active,inactive'
         ]);
 
         // Verify the selected user is a manager
-        $manager = User::findOrFail($request->manager_id);
-        if ($manager->role !== 'manager') {
-            return back()->withErrors(['manager_id' => 'Người được chọn không phải là manager']);
+        $leader = User::findOrFail($request->leader_id);
+        if ($leader->role !== 'manager') {
+            return back()->withErrors(['leader_id' => 'Người được chọn không phải là manager']);
         }
 
         $team->update([
             'name' => $request->name,
             'description' => $request->description,
-            'manager_id' => $request->manager_id,
-            'is_active' => $request->has('is_active')
+            'leader_id' => $request->leader_id,
+            'status' => $request->status
         ]);
 
         return redirect()->route('admin.teams.index')
@@ -94,14 +99,18 @@ class TeamController extends Controller
 
     public function destroy(Team $team)
     {
-        // Check if team has active members
-        if ($team->activeMembers()->count() > 0) {
-            return back()->with('error', 'Không thể xóa team có thành viên. Vui lòng xóa tất cả thành viên trước.');
+        // Check if team has members
+        if ($team->members()->count() > 0) {
+            return back()->with('error', 'Không thể xóa team có thành viên. Vui lòng chuyển tất cả thành viên sang team khác trước.');
         }
 
         // Check if team has tasks
-        if ($team->tasks()->count() > 0) {
-            return back()->with('error', 'Không thể xóa team có công việc. Vui lòng chuyển hoặc xóa tất cả công việc trước.');
+        $tasksCount = \App\Models\Task::whereHas('assignedUser', function($query) use ($team) {
+            $query->where('team_id', $team->id);
+        })->count();
+
+        if ($tasksCount > 0) {
+            return back()->with('error', 'Không thể xóa team có công việc. Vui lòng chuyển hoặc hoàn thành tất cả công việc trước.');
         }
 
         $team->delete();
@@ -110,41 +119,89 @@ class TeamController extends Controller
                         ->with('success', 'Team đã được xóa thành công!');
     }
 
+
+
+    public function getMembers(Team $team)
+    {
+        try {
+            $members = $team->members()->get();
+            $availableUsers = User::where('role', '!=', 'admin')
+                                ->whereNull('team_id')
+                                ->get();
+
+            return response()->json([
+                'success' => true,
+                'team' => $team,
+                'members' => $members,
+                'availableUsers' => $availableUsers
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function addMember(Request $request, Team $team)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'role_in_team' => 'required|in:member,senior_member,team_lead'
-        ]);
+        try {
+            $request->validate([
+                'user_id' => 'required|exists:users,id'
+            ]);
 
-        // Check if user is already a member
-        if ($team->members()->where('user_id', $request->user_id)->exists()) {
-            return back()->with('error', 'Người dùng đã là thành viên của team này.');
+            $user = User::findOrFail($request->user_id);
+
+            if ($user->team_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Người dùng đã thuộc team khác.'
+                ], 422);
+            }
+
+            // Add user to team
+            $user->update(['team_id' => $team->id]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Thành viên đã được thêm vào team thành công!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
         }
-
-        $team->members()->create([
-            'user_id' => $request->user_id,
-            'role_in_team' => $request->role_in_team,
-            'is_active' => true
-        ]);
-
-        return back()->with('success', 'Thành viên đã được thêm vào team thành công!');
     }
 
     public function removeMember(Request $request, Team $team)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id'
-        ]);
+        try {
+            $request->validate([
+                'user_id' => 'required|exists:users,id'
+            ]);
 
-        $member = $team->members()->where('user_id', $request->user_id)->first();
-        
-        if (!$member) {
-            return back()->with('error', 'Người dùng không phải là thành viên của team này.');
+            $user = User::findOrFail($request->user_id);
+
+            if ($user->team_id != $team->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Người dùng không phải là thành viên của team này.'
+                ], 422);
+            }
+
+            // Remove user from team
+            $user->update(['team_id' => null]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Thành viên đã được xóa khỏi team thành công!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
         }
-
-        $member->delete();
-
-        return back()->with('success', 'Thành viên đã được xóa khỏi team thành công!');
     }
 }

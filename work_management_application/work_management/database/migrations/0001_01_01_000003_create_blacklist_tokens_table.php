@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('teams', function (Blueprint $table) {
+        Schema::create('blacklist_tokens', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->text('description')->nullable();
-            $table->foreignId('manager_id')->constrained('users')->onDelete('cascade');
-            $table->boolean('is_active')->default(true);
+            $table->string('token_id')->comment('JWT token ID (jti)');
+            $table->timestamp('expires_at')->useCurrent()->useCurrentOnUpdate()->comment('Thời gian hết hạn của token');
             $table->timestamps();
+            
+            $table->index('token_id');
+            $table->index('expires_at');
         });
     }
 
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('teams');
+        Schema::dropIfExists('blacklist_tokens');
     }
 };
